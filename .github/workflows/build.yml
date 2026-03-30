@@ -32,6 +32,7 @@ jobs:
           libclang-dev \
           libva-dev libvdpau-dev \
           libopus-dev \
+          libvpx-dev \
           libxrandr-dev
 
     - name: Install Rust toolchain
@@ -47,7 +48,7 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build
-      run: cargo build --release
+      run: cargo build --release --features linux-pkg-config
 
     - name: Check
-      run: cargo check
+      run: cargo check --features linux-pkg-config
