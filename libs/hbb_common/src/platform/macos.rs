@@ -2,33 +2,29 @@ use crate::ResultType;
 use osascript;
 use serde_derive::{Deserialize, Serialize};
 
-/// 알림 다이얼로그의 매개변수
 #[derive(Serialize)]
 struct AlertParams {
-    title: String,           // 알림 제목
-    message: String,         // 알림 메시지
-    alert_type: String,      // informational, warning, critical
-    buttons: Vec<String>,    // 버튼 목록
+    title: String,
+    message: String,
+    alert_type: String,
+    buttons: Vec<String>,
 }
 
-/// 알림 다이얼로그의 결과
 #[derive(Deserialize)]
 struct AlertResult {
     #[serde(rename = "buttonReturned")]
-    button: String,          // 클릭된 버튼의 이름
+    button: String,
 }
 
-/// macOS 네이티브 알림 다이얼로그를 표시합니다.
-/// 지정된 앱에서 스크립트를 실행한 후 알림 다이얼로그를 표시하고,
-/// 사용자가 클릭한 버튼의 값을 반환합니다.
+/// Firstly run the specified app, then alert a dialog. Return the clicked button value.
 ///
-/// # 인수
+/// # Arguments
 ///
-/// * `app` - 스크립트를 실행할 앱 (e.g., "Finder", "System Events")
-/// * `alert_type` - 알림 타입: informational, warning, critical
-/// * `title` - 알림 제목
-/// * `message` - 알림 메시지
-/// * `buttons` - 표시할 버튼 목록
+/// * `app` - The app to execute the script.
+/// * `alert_type` - Alert type. . informational, warning, critical
+/// * `title` - The alert title.
+/// * `message` - The alert message.
+/// * `buttons` - The buttons to show.
 pub fn alert(
     app: String,
     alert_type: String,

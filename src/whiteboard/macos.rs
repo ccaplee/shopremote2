@@ -36,50 +36,42 @@ struct CursorInfo {
     cursor: Cursor,
 }
 
-/// macOS 윈도우 속성을 설정합니다.
-/// 투명도, 윈도우 레벨, 마우스 이벤트 통과 등을 구성합니다.
 fn set_window_properties(window: &Arc<Window>) -> ResultType<()> {
     let handle = window.window_handle()?;
     if let RawWindowHandle::AppKit(appkit_handle) = handle.as_raw() {
         unsafe {
             let ns_view = appkit_handle.ns_view.as_ptr() as *mut Object;
             if ns_view.is_null() {
-                bail!("윈도우 핸들의 NSView가 null입니다.");
+                bail!("Ns view of the window handle is null.");
             }
             let ns_window: *mut Object = msg_send![ns_view, window];
             if ns_window.is_null() {
-                bail!("NSView의 NSWindow가 null입니다.");
+                bail!("Ns window of the ns view is null.");
             }
-            // 투명 윈도우 설정
             let _: () = msg_send![ns_window, setOpaque: false];
-            // 최상위 윈도우 레벨 설정
             let _: () = msg_send![ns_window, setLevel: MAXIMUM_WINDOW_LEVEL];
             // NSWindowCollectionBehaviorCanJoinAllSpaces | NSWindowCollectionBehaviorIgnoresCycle
-            // 모든 space에서 표시하고 window cycle에서 무시
             let _: () = msg_send![ns_window, setCollectionBehavior: 5];
             let current_style_mask: u64 = msg_send![ns_window, styleMask];
-            // NSWindowStyleMaskNonactivatingPanel - 패널 스타일 적용
+            // NSWindowStyleMaskNonactivatingPanel
             let new_style_mask = current_style_mask | (1 << 7);
             let _: () = msg_send![ns_window, setStyleMask: new_style_mask];
-            // 마우스 이벤트를 윈도우 아래로 통과시키기
             let _: () = msg_send![ns_window, setIgnoresMouseEvents: true];
         }
     }
     Ok(())
 }
 
-/// 모든 디스플레이에 대해 화이트보드 윈도우를 생성합니다.
 fn create_windows(event_loop: &EventLoop<(String, CustomEvent)>) -> ResultType<Vec<WindowState>> {
     let mut windows = Vec::new();
-    // 디스플레이 이름을 키로 원점 정보를 매핑
     let map_display_origins: HashMap<_, _> = crate::server::display_service::try_get_displays()?
         .into_iter()
         .map(|display| (display.name(), display.origin()))
         .collect();
-    // 주의: `crate::server::display_service::try_get_displays()`의 반환값은:
-    // 1. `display.origin()` - 논리 좌표 (논리적 위치)
-    // 2. `display.width()` 및 `display.height()` - 물리적 크기
-    // 따라서 event_loop의 모니터 정보와는 약간 다를 수 있습니다.
+    // We can't use `crate::server::display_service::try_get_displays()` here.
+    // Because the `display` returned by `crate::server::display_service::try_get_displays()`:
+    // 1. `display.origin()` is the logic position.
+    // 2. `display.width()` and `display.height()` are the physical size.
     for monitor in event_loop.available_monitors() {
         let Some(origin) = map_display_origins.get(&monitor.native_id().to_string()) else {
             // unreachable!
@@ -224,17 +216,12 @@ fn draw_cursors(
     }
 }
 
-/// macOS 플랫폼에서 화이트보드 이벤트 루프를 생성합니다.
 pub(super) fn create_event_loop() -> ResultType<()> {
-    // Dock에서 화이트보드 앱 숨기기
     crate::platform::hide_dock();
-    // 사용자 이벤트 처리 가능한 이벤트 루프 생성
     let event_loop = EventLoopBuilder::<(String, CustomEvent)>::with_user_event().build();
 
-    // 모든 디스플레이에 윈도우 생성
     let windows = create_windows(&event_loop)?;
 
-    // 이벤트 루프 프록시 저장 (다른 스레드에서 UI 이벤트 전송용)
     let proxy = event_loop.create_proxy();
     EVENT_PROXY.write().unwrap().replace(proxy);
     let _call_on_ret = crate::common::SimpleCallOnReturn {
@@ -244,11 +231,8 @@ pub(super) fn create_event_loop() -> ResultType<()> {
         }),
     };
 
-    // 윈도우별 리플 애니메이션 저장소
     let mut window_ripples: HashMap<WindowId, Vec<Ripple>> = HashMap::new();
-    // 연결별 마지막 커서 정보
     let mut last_cursors: HashMap<String, CursorInfo> = HashMap::new();
-    // 커서 텍스트 렌더링 결과 캐시 (텍스트 내용과 색상 조합을 키로 함)
     let mut map_cursor_text: HashMap<(String, u32), CoreGraphicsTextLayout> = HashMap::new();
 
     event_loop.run(move |event, _, control_flow| {

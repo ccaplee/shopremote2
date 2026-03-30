@@ -15,35 +15,24 @@ use std::{
     time::Duration,
 };
 
-// RustDesk로 전송할 메시지의 대상
 const MSG_TO_RUSTDESK_TARGET: &str = "rustdesk";
-// 피어로 전송할 메시지의 대상
 const MSG_TO_PEER_TARGET: &str = "peer";
-// UI로 전송할 메시지의 대상
 const MSG_TO_UI_TARGET: &str = "ui";
-// 설정으로 전송할 메시지의 대상
 const MSG_TO_CONFIG_TARGET: &str = "config";
-// 외부 지원으로 전송할 메시지의 대상
 const MSG_TO_EXT_SUPPORT_TARGET: &str = "ext-support";
 
-// 서명 검증을 위한 RustDesk 메시지 타입
 const MSG_TO_RUSTDESK_SIGNATURE_VERIFICATION: &str = "signature_verification";
 
-// Flutter 메인 채널 플래그
 #[allow(dead_code)]
 const MSG_TO_UI_FLUTTER_CHANNEL_MAIN: u16 = 0x01 << 0;
-// Flutter 연결 관리 채널 플래그
 #[allow(dead_code)]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 const MSG_TO_UI_FLUTTER_CHANNEL_CM: u16 = 0x01 << 1;
 #[cfg(any(target_os = "android", target_os = "ios"))]
 const MSG_TO_UI_FLUTTER_CHANNEL_CM: u16 = 0x01;
-// Flutter 원격 세션 채널 플래그
 const MSG_TO_UI_FLUTTER_CHANNEL_REMOTE: u16 = 0x01 << 2;
-// Flutter 파일 전송 채널 플래그
 #[allow(dead_code)]
 const MSG_TO_UI_FLUTTER_CHANNEL_TRANSFER: u16 = 0x01 << 3;
-// Flutter 포트 포워딩 채널 플래그
 #[allow(dead_code)]
 const MSG_TO_UI_FLUTTER_CHANNEL_FORWARD: u16 = 0x01 << 4;
 
@@ -57,53 +46,36 @@ lazy_static::lazy_static! {
     };
 }
 
-/// RustDesk으로 전송할 메시지의 구조체
 #[derive(Deserialize)]
 pub struct MsgToRustDesk {
-    /// 메시지 타입
     pub r#type: String,
-    /// 메시지 데이터
     pub data: Vec<u8>,
 }
 
-/// 서명 검증을 위한 메시지 구조체
 #[derive(Deserialize)]
 pub struct SignatureVerification {
-    /// 플러그인 버전
     pub version: String,
-    /// 검증 데이터
     pub data: Vec<u8>,
 }
 
-/// 설정을 UI로 전송하기 위한 구조체
 #[derive(Debug, Deserialize)]
 struct ConfigToUi {
-    /// Flutter 채널 ID
     channel: u16,
-    /// 설정 위치
     location: String,
 }
 
-/// 설정으로 전송할 메시지의 구조체
 #[derive(Debug, Deserialize)]
 struct MsgToConfig {
-    /// 설정 타입 (공유 또는 피어)
     r#type: String,
-    /// 설정 키
     key: String,
-    /// 설정 값
     value: String,
-    /// UI로도 전송할지 여부 (None이 아니면 UI로 메시지 전송)
     #[serde(skip_serializing_if = "Option::is_none")]
-    ui: Option<ConfigToUi>,
+    ui: Option<ConfigToUi>, // If not None, send msg to ui.
 }
 
-/// 외부 지원으로 전송할 메시지의 구조체
 #[derive(Debug, Deserialize)]
 pub(super) struct MsgToExtSupport {
-    /// 외부 지원 메시지 타입
     pub r#type: String,
-    /// 메시지 데이터
     pub data: Vec<u8>,
 }
 
@@ -119,8 +91,6 @@ struct PluginSignResp {
     signed_msg: Vec<u8>,
 }
 
-/// C 문자열 필드를 Rust 문자열로 변환하는 매크로
-/// 실패 시 오류를 로깅하고 PluginReturn::new을 반환합니다
 macro_rules! cb_msg_field {
     ($field: ident) => {
         let $field = match cstr_to_string($field) {
@@ -134,8 +104,6 @@ macro_rules! cb_msg_field {
     };
 }
 
-/// 결과값을 확인하고 실패 시 조기 반환하는 매크로
-/// 오류 코드와 메시지 포맷을 지정하여 PluginReturn을 생성합니다
 macro_rules! early_return_value {
     ($e:expr, $code: ident, $($arg:tt)*) => {
         match $e {
@@ -148,19 +116,18 @@ macro_rules! early_return_value {
     };
 }
 
-/// 피어 또는 UI로 메시지를 전송하는 콜백 함수
-/// peer, target, id는 UTF-8 널 종료 문자열입니다.
+/// Callback to send message to peer or ui.
+/// peer, target, id are utf8 strings(null terminated).
 ///
-/// # 매개변수
-/// * `peer` - 피어 ID (UTF-8 널 종료 문자열)
-/// * `target` - 메시지 대상 ("peer", "ui", "config", "rustdesk", "ext-support")
-/// * `id` - 플러그인 ID (UTF-8 널 종료 문자열)
-/// * `content` - 메시지 내용 데이터
-/// * `len` - 메시지 내용의 길이 (바이트)
+/// peer:    The peer id.
+/// target:  "peer" or "ui".
+/// id:      The id of this plugin.
+/// content: The content.
+/// len:     The length of the content.
 ///
-/// # 반환값
-/// 성공 시 null 포인터 반환
-/// 실패 시 오류 메시지를 반환합니다 (i32-String 형식, 플러그인이 libc::malloc으로 할당)
+/// Return null ptr if success.
+/// Return the error message if failed.  `i32-String` without dash, i32 is a signed little-endian number, the String is utf8 string.
+/// The plugin allocate memory with `libc::malloc` and return the pointer.
 #[no_mangle]
 pub(super) extern "C" fn cb_msg(
     peer: *const c_char,
@@ -205,11 +172,11 @@ pub(super) extern "C" fn cb_msg(
         MSG_TO_CONFIG_TARGET => {
             cb_msg_field!(peer);
             let s = early_return_value!(
-                std::str::from_raw_parts(content as _, len) }),
+                std::str::from_utf8(unsafe { std::slice::from_raw_parts(content as _, len) }),
                 ERR_CALLBACK_INVALID_MSG,
                 "parse msg string"
             );
-            // 메시지들을 병합할 필요가 없습니다. 하나씩 처리하는 것이 가능합니다.
+            // No need to merge the msgs. Handling the msg one by one is ok.
             let msg = early_return_value!(
                 serde_json::from_str::<MsgToConfig>(s),
                 ERR_CALLBACK_INVALID_MSG,
@@ -218,27 +185,24 @@ pub(super) extern "C" fn cb_msg(
             );
             match &msg.r#type as _ {
                 config::CONFIG_TYPE_SHARED => {
-                    // 로컬 설정 저장
                     let _r = early_return_value!(
                         config::SharedConfig::set(&id, &msg.key, &msg.value),
                         ERR_CALLBACK_INVALID_MSG,
                         "set local config"
                     );
                     if let Some(ui) = &msg.ui {
-                        // 로컬 설정의 경우 피어 ID를 설정할 필요가 없습니다.
+                        // No need to set the peer id for location config.
                         push_option_to_ui(ui.channel, &id, "", &msg, ui);
                     }
                     PluginReturn::success()
                 }
                 config::CONFIG_TYPE_PEER => {
-                    // 피어별 설정 저장
                     let _r = early_return_value!(
                         config::PeerConfig::set(&id, &peer, &msg.key, &msg.value),
                         ERR_CALLBACK_INVALID_MSG,
                         "set peer config"
                     );
                     if let Some(ui) = &msg.ui {
-                        // UI에도 설정 옵션을 푸시합니다
                         push_option_to_ui(ui.channel, &id, &peer, &msg, ui);
                     }
                     PluginReturn::success()
@@ -272,8 +236,6 @@ pub(super) extern "C" fn cb_msg(
     }
 }
 
-/// 주어진 채널이 피어 채널인지 확인합니다
-/// (원격, 파일 전송, 포트 포워딩 중 하나)
 #[inline]
 fn is_peer_channel(channel: u16) -> bool {
     channel & MSG_TO_UI_FLUTTER_CHANNEL_REMOTE != 0
@@ -281,7 +243,6 @@ fn is_peer_channel(channel: u16) -> bool {
         || channel & MSG_TO_UI_FLUTTER_CHANNEL_FORWARD != 0
 }
 
-/// RustDesk 타겟으로 전송된 메시지를 처리합니다
 fn handle_msg_to_rustdesk(id: String, content: *const c_void, len: usize) -> PluginReturn {
     let s = early_return_value!(
         std::str::from_utf8(unsafe { std::slice::from_raw_parts(content as _, len) }),
@@ -306,8 +267,6 @@ fn handle_msg_to_rustdesk(id: String, content: *const c_void, len: usize) -> Plu
     }
 }
 
-/// 플러그인 서명을 요청합니다
-/// HTTP를 통해 API 서버에 서명 요청을 보내고 결과를 플러그인에 전달합니다
 fn request_plugin_sign(id: String, msg_to_rustdesk: MsgToRustDesk) -> PluginReturn {
     let signature_data = early_return_value!(
         std::str::from_utf8(&msg_to_rustdesk.data),
@@ -404,21 +363,18 @@ fn request_plugin_sign(id: String, msg_to_rustdesk: MsgToRustDesk) -> PluginRetu
     PluginReturn::success()
 }
 
-/// 플러그인 이벤트를 UI로 푸시합니다
-/// 지정된 채널에 따라 메인, CM, 원격 세션 등으로 이벤트를 전송합니다
 fn push_event_to_ui(channel: u16, peer: &str, content: &str) {
     let mut m = HashMap::new();
     m.insert("name", MSG_TO_UI_TYPE_PLUGIN_EVENT);
     m.insert("peer", &peer);
     m.insert("content", &content);
     let event = serde_json::to_string(&m).unwrap_or("".to_string());
-    // 메인 및 CM 채널로 전송
+    // Send to main and cm
     for (k, v) in MSG_TO_UI_FLUTTER_CHANNELS.iter() {
         if channel & k != 0 {
             let _res = flutter::push_global_event(v as _, event.to_string());
         }
     }
-    // 피어 채널인 경우 세션 이벤트로도 전송
     if !peer.is_empty() && is_peer_channel(channel) {
         let _res = flutter::push_session_event(
             &peer,
@@ -428,8 +384,6 @@ fn push_event_to_ui(channel: u16, peer: &str, content: &str) {
     }
 }
 
-/// 플러그인 설정 옵션을 UI로 푸시합니다
-/// 지정된 채널과 위치에 따라 설정 변경을 UI에 알립니다
 fn push_option_to_ui(channel: u16, id: &str, peer: &str, msg: &MsgToConfig, ui: &ConfigToUi) {
     let v = [
         ("id", id),
@@ -438,7 +392,7 @@ fn push_option_to_ui(channel: u16, id: &str, peer: &str, msg: &MsgToConfig, ui: 
         ("value", &msg.value),
     ];
 
-    // 메인 및 CM 채널로 전송
+    // Send main and cm
     let mut m = HashMap::from(v);
     m.insert("name", MSG_TO_UI_TYPE_PLUGIN_OPTION);
     let event = serde_json::to_string(&m).unwrap_or("".to_string());
@@ -448,7 +402,7 @@ fn push_option_to_ui(channel: u16, id: &str, peer: &str, msg: &MsgToConfig, ui: 
         }
     }
 
-    // 원격, 파일 전송, 포트 포워딩 채널로 전송
+    // Send remote, transfer and forward
     if !peer.is_empty() && is_peer_channel(channel) {
         let mut v = v.to_vec();
         v.push(("peer", &peer));
