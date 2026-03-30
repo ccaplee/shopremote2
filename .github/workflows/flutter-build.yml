@@ -721,6 +721,11 @@ jobs:
           fi
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
+      - name: Ad-hoc codesign app
+        if: env.UPLOAD_ARTIFACT == 'true' && env.MACOS_P12_BASE64 == null
+        run: |
+          codesign --force --deep -s - ./flutter/build/macos/Build/Products/Release/RustDesk.app
+
       - name: create unsigned dmg
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
@@ -1095,6 +1100,13 @@ jobs:
           tag_name: ${{ env.TAG_NAME }}
           files: |
             ${{steps.sign-rustdesk.outputs.signedReleaseFile}}
+
+      - name: Upload unsigned apk artifact
+        if: env.ANDROID_SIGNING_KEY == null && env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/upload-artifact@master
+        with:
+          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
+          path: signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk
 
       - name: Publish unsigned apk package
         if: env.ANDROID_SIGNING_KEY == null && env.UPLOAD_ARTIFACT == 'true'
@@ -1596,7 +1608,14 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
           name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
-          path: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
+          path: rustdesk-*.deb
+
+      - name: Upload rpm
+        uses: actions/upload-artifact@master
+        if: env.UPLOAD_ARTIFACT == 'true'
+        with:
+          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.rpm
+          path: rustdesk-*.rpm
 
       # only x86_64 for arch since we can not find newest arm64 docker image to build
       # old arch image does not make sense for arch since it is "arch" which always update to date
