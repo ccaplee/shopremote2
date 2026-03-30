@@ -46,14 +46,18 @@ jobs:
         export VCPKG_DEFAULT_TRIPLET=x64-linux
         "$VCPKG_ROOT/vcpkg" install --triplet x64-linux
         echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
-        echo "VCPKG_INSTALLED_ROOT=$VCPKG_ROOT/installed" >> $GITHUB_ENV
+        # 매니페스트 모드에서는 vcpkg_installed 디렉토리에 설치됨
+        INSTALLED_DIR="$(pwd)/vcpkg_installed/x64-linux"
+        echo "VCPKG_INSTALLED_ROOT=$(pwd)/vcpkg_installed" >> $GITHUB_ENV
+        echo "VCPKG_INSTALLED_DIR=$INSTALLED_DIR" >> $GITHUB_ENV
 
     - name: Verify vcpkg packages
       run: |
-        echo "Checking installed headers..."
-        ls -la "$VCPKG_ROOT/installed/x64-linux/include/"
-        ls -la "$VCPKG_ROOT/installed/x64-linux/include/vpx/" || echo "No vpx dir"
-        ls -la "$VCPKG_ROOT/installed/x64-linux/lib/" | head -20
+        echo "Checking vcpkg_installed directory..."
+        find . -path "*/vcpkg_installed/*/include/vpx" -type d 2>/dev/null || echo "vpx not found via find"
+        ls -la vcpkg_installed/ 2>/dev/null || echo "No vcpkg_installed dir"
+        ls -la vcpkg_installed/x64-linux/include/ 2>/dev/null || echo "No x64-linux include"
+        ls -la vcpkg_installed/x64-linux/lib/ 2>/dev/null | head -20 || echo "No x64-linux lib"
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -68,10 +72,8 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build
-      env:
-        BINDGEN_EXTRA_CLANG_ARGS: "-I${{ env.VCPKG_ROOT }}/installed/x64-linux/include"
       run: |
-        export BINDGEN_EXTRA_CLANG_ARGS="-I$VCPKG_ROOT/installed/x64-linux/include"
+        export BINDGEN_EXTRA_CLANG_ARGS="-I$(pwd)/vcpkg_installed/x64-linux/include"
         cargo build --release
 
     - name: Check
