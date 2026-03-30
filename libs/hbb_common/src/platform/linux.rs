@@ -16,44 +16,46 @@ use sctk::{
 };
 
 lazy_static::lazy_static! {
+    /// 현재 시스템의 Linux 배포판 정보 캐싱
     pub static ref DISTRO: Distro = Distro::new();
 }
 
-// to-do: There seems to be some runtime issue that causes the audit logs to be generated.
-// We may need to fix this and remove this workaround in the future.
-//
-// We use the pre-search method to find the command path to avoid the audit logs on some systems.
-// No idea why the audit logs happen.
-// Though the audit logs may disappear after rebooting.
-//
-// See https://github.com/rustdesk/rustdesk/discussions/11959
-//
-// `ausearch -x /usr/share/rustdesk/rustdesk` will return
-// ...
-// time->Tue Jun 24 10:40:43 2025
-// type=PROCTITLE msg=audit(1750776043.446:192757): proctitle=2F7573722F62696E2F727573746465736B002D2D73657276696365
-// type=PATH msg=audit(1750776043.446:192757): item=0 name="/usr/local/bin/sh" nametype=UNKNOWN cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 cap_frootid=0
-// type=CWD msg=audit(1750776043.446:192757): cwd="/"
-// type=SYSCALL msg=audit(1750776043.446:192757): arch=c000003e syscall=59 success=no exit=-2 a0=7fb7dbd22da0 a1=1d65f2c0 a2=7ffc25193360 a3=7ffc25194ec0 items=1 ppid=172208 pid=267565 auid=4294967295 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none) ses=4294967295 comm="rustdesk" exe="/usr/share/rustdesk/rustdesk" subj=unconfined key="processos_criados"
-// ----
-// time->Tue Jun 24 10:40:43 2025
-// type=PROCTITLE msg=audit(1750776043.446:192758): proctitle=2F7573722F62696E2F727573746465736B002D2D73657276696365
-// type=PATH msg=audit(1750776043.446:192758): item=0 name="/usr/sbin/sh" nametype=UNKNOWN cap_fp=0 cap_fi=0 cap_fe=0 cap_fver=0 cap_frootid=0
-// ...
+/// TODO: 일부 시스템에서 감시 로그가 생성되는 런타임 문제가 있습니다.
+/// 향후 이를 수정하고 이 해결책을 제거해야 합니다.
+///
+/// 감시 로그를 피하기 위해 명령 경로를 미리 찾습니다.
+/// 감시 로그가 발생하는 이유는 불명입니다.
+/// 다만, 재부팅 후 감시 로그가 사라질 수 있습니다.
+///
+/// 참고: https://github.com/rustdesk/rustdesk/discussions/11959
+///
+/// `ausearch -x /usr/share/rustdesk/rustdesk` 명령의 출력 예시:
+/// ...
+/// time->Tue Jun 24 10:40:43 2025
+/// type=PROCTITLE msg=audit(1750776043.446:192757): proctitle=2F7573722F62696E2F727573746465736B002D2D73657276696365
+/// ...
 lazy_static::lazy_static! {
+    /// loginctl 명령어 경로
     pub static ref CMD_LOGINCTL: String = find_cmd_path("loginctl");
+    /// ps 명령어 경로
     pub static ref CMD_PS: String = find_cmd_path("ps");
+    /// sh 명령어 경로
     pub static ref CMD_SH: String = find_cmd_path("sh");
 }
 
-pub const DISPLAY_SERVER_WAYLAND: &str = "wayland";
-pub const DISPLAY_SERVER_X11: &str = "x11";
-pub const DISPLAY_DESKTOP_KDE: &str = "KDE";
+// 디스플레이 서버 상수
+pub const DISPLAY_SERVER_WAYLAND: &str = "wayland";  // Wayland 디스플레이 서버
+pub const DISPLAY_SERVER_X11: &str = "x11";         // X11 디스플레이 서버
+pub const DISPLAY_DESKTOP_KDE: &str = "KDE";        // KDE 데스크톱
 
+// 환경 변수 이름
 pub const XDG_CURRENT_DESKTOP: &str = "XDG_CURRENT_DESKTOP";
 
+/// Linux 배포판 정보
 pub struct Distro {
+    // 배포판 이름 (e.g., "Ubuntu", "Fedora")
     pub name: String,
+    // 배포판 버전 ID
     pub version_id: String,
 }
 

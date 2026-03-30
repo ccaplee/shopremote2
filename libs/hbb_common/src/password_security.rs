@@ -3,42 +3,59 @@ use sodiumoxide::base64;
 use std::sync::{Arc, RwLock};
 
 lazy_static::lazy_static! {
+    /// 임시 비밀번호 저장소
+    /// 서버에서만 사용되며, 세션별로 변경될 수 있습니다.
     pub static ref TEMPORARY_PASSWORD:Arc<RwLock<String>> = Arc::new(RwLock::new(get_auto_password()));
 }
 
+/// 비밀번호 검증 방법을 정의합니다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum VerificationMethod {
+    // 임시 비밀번호만 사용
     OnlyUseTemporaryPassword,
+    // 영구 비밀번호만 사용
     OnlyUsePermanentPassword,
+    // 임시 비밀번호와 영구 비밀번호 모두 사용 (기본값)
     UseBothPasswords,
 }
 
+/// 연결 승인 모드를 정의합니다.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ApproveMode {
+    // 비밀번호와 클릭 승인 모두 필요
     Both,
+    // 비밀번호만 필요
     Password,
+    // 클릭 승인만 필요
     Click,
 }
 
+/// 자동 생성 비밀번호를 만듭니다.
+/// 설정에 따라 숫자만 포함하거나 혼합된 문자를 사용합니다.
 fn get_auto_password() -> String {
     let len = temporary_password_length();
     if Config::get_bool_option(crate::config::keys::OPTION_ALLOW_NUMERNIC_ONE_TIME_PASSWORD) {
+        // 숫자만 포함
         Config::get_auto_numeric_password(len)
     } else {
+        // 알파벳과 숫자 혼합
         Config::get_auto_password(len)
     }
 }
 
-// Should only be called in server
+/// 임시 비밀번호를 업데이트합니다.
+/// 서버에서만 호출되어야 합니다.
 pub fn update_temporary_password() {
     *TEMPORARY_PASSWORD.write().unwrap() = get_auto_password();
 }
 
-// Should only be called in server
+/// 현재 임시 비밀번호를 반환합니다.
+/// 서버에서만 호출되어야 합니다.
 pub fn temporary_password() -> String {
     TEMPORARY_PASSWORD.read().unwrap().clone()
 }
 
+/// 설정된 비밀번호 검증 방법을 반환합니다.
 fn verification_method() -> VerificationMethod {
     let method = Config::get_option("verification-method");
     if method == "use-temporary-password" {
@@ -46,10 +63,12 @@ fn verification_method() -> VerificationMethod {
     } else if method == "use-permanent-password" {
         VerificationMethod::OnlyUsePermanentPassword
     } else {
-        VerificationMethod::UseBothPasswords // default
+        VerificationMethod::UseBothPasswords  // 기본값
     }
 }
 
+/// 임시 비밀번호의 길이를 반환합니다.
+/// 기본값: 6자리, 선택 가능: 8자리 또는 10자리
 pub fn temporary_password_length() -> usize {
     let length = Config::get_option("temporary-password-length");
     if length == "8" {
@@ -57,23 +76,27 @@ pub fn temporary_password_length() -> usize {
     } else if length == "10" {
         10
     } else {
-        6 // default
+        6  // 기본값
     }
 }
 
+/// 임시 비밀번호 검증이 활성화되어 있는지 확인합니다.
 pub fn temporary_enabled() -> bool {
     verification_method() != VerificationMethod::OnlyUsePermanentPassword
 }
 
+/// 영구 비밀번호 검증이 활성화되어 있는지 확인합니다.
 pub fn permanent_enabled() -> bool {
     verification_method() != VerificationMethod::OnlyUseTemporaryPassword
 }
 
+/// 유효한 비밀번호(임시 또는 영구)가 설정되어 있는지 확인합니다.
 pub fn has_valid_password() -> bool {
     temporary_enabled() && !temporary_password().is_empty()
         || permanent_enabled() && !Config::get_permanent_password().is_empty()
 }
 
+/// 연결 승인 모드를 반환합니다.
 pub fn approve_mode() -> ApproveMode {
     let mode = Config::get_option("approve-mode");
     if mode == "password" {
@@ -85,6 +108,8 @@ pub fn approve_mode() -> ApproveMode {
     }
 }
 
+/// 원격 제어를 숨길지 여부를 확인합니다.
+/// 조건: 비밀번호만 필요하고, 영구 비밀번호만 사용, allow-hide-cm이 활성화됨
 pub fn hide_cm() -> bool {
     approve_mode() == ApproveMode::Password
         && verification_method() == VerificationMethod::OnlyUsePermanentPassword

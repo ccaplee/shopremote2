@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::sync::Once;
 use sysinfo::System;
 
+/// AES S-box 테이블 - 암호화 과정에서 바이트 치환에 사용
 const TABLE: [u8; 256] = [
     0x63, 0x7c, 0x77, 0x7b, 0xf2, 0x6b, 0x6f, 0xc5, 0x30, 0x01, 0x67, 0x2b, 0xfe, 0xd7, 0xab, 0x76,
     0xca, 0x82, 0xc9, 0x7d, 0xfa, 0x59, 0x47, 0xf0, 0xad, 0xd4, 0xa2, 0xaf, 0x9c, 0xa4, 0x72, 0xc0,
@@ -24,6 +25,8 @@ const TABLE: [u8; 256] = [
     0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16,
 ];
 
+/// AES-128 키 확장(Key Expansion) 함수입니다.
+/// 128비트 키를 받아 11개의 라운드 키를 생성합니다.
 pub fn expand_key(key: &[u8; 16]) -> Vec<[u8; 16]> {
     let mut round_keys = Vec::with_capacity(11);
     let mut expanded_key = Vec::with_capacity(176);
@@ -68,12 +71,15 @@ pub fn expand_key(key: &[u8; 16]) -> Vec<[u8; 16]> {
     round_keys
 }
 
+/// AES 블록 암호화를 수행합니다 (10라운드).
 fn finalize_block(input: &[u8; 16], key: &[u8; 16]) -> [u8; 16] {
     let round_keys = expand_key(key);
     let mut state = *input;
 
+    // 초기 라운드 키 추가
     add_round_key(&mut state, &round_keys[0]);
 
+    // 9라운드 암호화
     for round in 1..10 {
         sub_bytes(&mut state);
         shift_rows(&mut state);
@@ -81,6 +87,7 @@ fn finalize_block(input: &[u8; 16], key: &[u8; 16]) -> [u8; 16] {
         add_round_key(&mut state, &round_keys[round]);
     }
 
+    // 최종 라운드 (MixColumns 제외)
     sub_bytes(&mut state);
     shift_rows(&mut state);
     add_round_key(&mut state, &round_keys[10]);
@@ -88,12 +95,14 @@ fn finalize_block(input: &[u8; 16], key: &[u8; 16]) -> [u8; 16] {
     state
 }
 
+/// SubBytes 변환 - S-box 테이블을 이용한 바이트 치환
 fn sub_bytes(state: &mut [u8; 16]) {
     for byte in state.iter_mut() {
         *byte = TABLE[*byte as usize];
     }
 }
 
+/// ShiftRows 변환 - 행 단위로 바이트 이동
 fn shift_rows(state: &mut [u8; 16]) {
     let mut temp = *state;
     temp[1] = state[5];
@@ -111,12 +120,14 @@ fn shift_rows(state: &mut [u8; 16]) {
     *state = temp;
 }
 
+/// AddRoundKey 변환 - 라운드 키를 XOR 연산으로 추가
 pub fn add_round_key(state: &mut [u8; 16], round_key: &[u8; 16]) {
     for i in 0..16 {
         state[i] ^= round_key[i];
     }
 }
 
+/// 갈루아 필드(GF(2^8))에서의 곱셈
 pub fn gf_mul(a: u8, b: u8) -> u8 {
     let mut p = 0u8;
     let mut temp = b;
@@ -136,6 +147,7 @@ pub fn gf_mul(a: u8, b: u8) -> u8 {
     p
 }
 
+/// MixColumns 변환 - 열 단위 선형 변환
 fn mix_columns(state: &mut [u8; 16]) {
     for i in 0..4 {
         let s0 = state[i * 4];
@@ -150,6 +162,8 @@ fn mix_columns(state: &mut [u8; 16]) {
     }
 }
 
+/// 시스템의 엔트로피(무작위성)를 얻습니다.
+/// 현재 시간을 기반으로 합니다.
 fn get_system_entropy() -> [u8; 16] {
     let mut entropy = [0u8; 16];
     let timestamp = std::time::SystemTime::now()
@@ -162,6 +176,8 @@ fn get_system_entropy() -> [u8; 16] {
     entropy
 }
 
+/// AES 암호화를 위한 키를 생성합니다.
+/// 기본 키와 시스템 엔트로피를 XOR합니다.
 fn get_key() -> [u8; 16] {
     let entropy = get_system_entropy();
     let base = [
@@ -175,26 +191,43 @@ fn get_key() -> [u8; 16] {
     base
 }
 
+/// 기기 지문정보(Fingerprinting)를 저장합니다.
+/// 기기의 고유한 특성을 조합하여 기기 식별에 사용됩니다.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct FingerprintingInfo {
+    // 라인 종료 문자 (Windows: \r\n, Others: \n)
     eol: String,
+    // 엔디언 (BE: Big Endian, LE: Little Endian)
     endianness: String,
+    // CPU 브랜드명
     brand: String,
+    // CPU 최대 주파수
     speed_max: String,
+    // 논리 코어 수
     cores: String,
+    // 물리 코어 수
     physical_cores: String,
+    // 총 메모리 크기
     mem_total: String,
+    // 운영 체제
     platform: String,
+    // CPU 아키텍처 (x86_64, aarch64 등)
     arch: String,
+    // 기기 ID (설정에서 가져옴)
     id: String,
+    // MAC 주소 (기기 식별용)
     addr: String,
 }
 
+// 캐시된 지문정보 (한 번만 생성)
 static mut FINGERPRINTING_INFO: Option<FingerprintingInfo> = None;
+// 초기화 플래그
 static INIT: Once = Once::new();
+// 지문 해시 캐시 (다양한 매개변수 조합별)
 static mut CACHED_FINGERPRINTS: Option<HashMap<String, Vec<u8>>> = None;
 
 impl FingerprintingInfo {
+    /// 시스템 정보를 수집하여 새로운 FingerprintingInfo를 생성합니다.
     fn new() -> Self {
         let mut sys = System::new();
         sys.refresh_cpu();
@@ -242,6 +275,7 @@ impl FingerprintingInfo {
     }
 }
 
+/// 캐시된 지문정보를 반환합니다 (첫 호출 시 생성).
 pub fn get_fingerprinting_info() -> FingerprintingInfo {
     unsafe {
         INIT.call_once(|| {
@@ -253,6 +287,9 @@ pub fn get_fingerprinting_info() -> FingerprintingInfo {
     }
 }
 
+/// 기기 지문을 계산합니다.
+/// only: 포함할 매개변수 (None이면 all_parameters 사용)
+/// except: 제외할 매개변수 (None이면 제외 없음)
 pub fn get_fingerprint(only: Option<Vec<String>>, except: Option<Vec<String>>) -> Vec<u8> {
     let all_parameters = vec![
         "eol".to_string(),
@@ -295,13 +332,18 @@ pub fn get_fingerprint(only: Option<Vec<String>>, except: Option<Vec<String>>) -
     }
 }
 
+/// SHA512과 AES를 조합한 해시 함수입니다.
 struct Sha512Hasher {
+    // SHA512 해시 객체
     sha512: Sha512,
+    // AES 암호화용 키
     key: [u8; 16],
+    // 32바이트 이상의 데이터를 AES로 암호화하기 위한 버퍼
     buffer: Vec<u8>,
 }
 
 impl Sha512Hasher {
+    /// 새로운 Sha512Hasher를 생성합니다.
     fn new() -> Self {
         let key = get_key();
         Sha512Hasher {
@@ -311,6 +353,9 @@ impl Sha512Hasher {
         }
     }
 
+    /// 해시 함수에 데이터를 추가합니다.
+    /// 32바이트 이상의 데이터는 즉시 SHA512로 처리되고,
+    /// 나머지는 버퍼에 저장됩니다.
     fn update(&mut self, data: &[u8]) {
         if data.len() <= 32 {
             self.buffer.extend_from_slice(data);
@@ -323,11 +368,15 @@ impl Sha512Hasher {
         }
     }
 
+    /// 해싱을 완료하고 최종 해시값을 반환합니다.
+    /// SHA512 해시 + AES 암호화된 버퍼 데이터
     fn finalize(self) -> Vec<u8> {
         let mut result = Vec::new();
 
+        // SHA512 해시 결과 추가 (64바이트)
         result.extend(self.sha512.finalize());
 
+        // 버퍼에 남은 데이터가 있으면 AES로 암호화
         if !self.buffer.is_empty() {
             let mut first_block = [0u8; 16];
             let mut second_block = [0u8; 16];
@@ -353,11 +402,13 @@ impl Sha512Hasher {
     }
 }
 
+/// 지정된 매개변수를 기반으로 기기 지문을 계산합니다.
 fn calculate_fingerprint(parameters: &[String]) -> Vec<u8> {
     let info = get_fingerprinting_info();
 
     let mut hasher = Sha512Hasher::new();
 
+    // 선택된 매개변수들을 결합하여 지문 문자열 생성
     let fingerprint_string = parameters
         .iter()
         .filter_map(|param| match param.as_str() {

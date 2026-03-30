@@ -2,27 +2,36 @@ use std::{collections::HashMap, sync::RwLock};
 
 use crate::config::allow_insecure_tls_fallback;
 
+/// TLS 구현 타입을 나타냅니다.
 #[derive(Debug, Clone, Copy)]
 pub enum TlsType {
+    // 평문 HTTP 통신 (TLS 없음)
     Plain,
+    // Native TLS (운영체제 기본 TLS 라이브러리 사용)
     NativeTls,
+    // Rustls (Rust 기본 TLS 라이브러리)
     Rustls,
 }
 
 lazy_static::lazy_static! {
+    /// URL 도메인별로 선택된 TLS 타입을 캐싱합니다.
     static ref URL_TLS_TYPE: RwLock<HashMap<String, TlsType>> = RwLock::new(HashMap::new());
+    /// URL 도메인별로 무효한 인증서 수락 여부를 캐싱합니다.
     static ref URL_TLS_DANGER_ACCEPT_INVALID_CERTS: RwLock<HashMap<String, bool>> = RwLock::new(HashMap::new());
 }
 
+/// URL이 평문 통신(TLS 없음)을 사용하는지 확인합니다.
 #[inline]
 pub fn is_plain(url: &str) -> bool {
     url.starts_with("ws://") || url.starts_with("http://")
 }
 
-// Extract domain from URL.
-// e.g., "https://example.com/path" -> "example.com"
-//       "https://example.com:8080/path" -> "example.com:8080"
-// See the tests for more examples.
+/// URL에서 도메인과 포트를 추출합니다.
+/// 예시:
+/// - "https://example.com/path" -> "example.com"
+/// - "https://example.com:8080/path" -> "example.com:8080"
+/// - "https://user:pass@example.com" -> "example.com"
+/// 테스트에서 더 많은 예시를 확인할 수 있습니다.
 #[inline]
 fn get_domain_and_port_from_url(url: &str) -> &str {
     // Remove scheme (e.g., http://, https://, ws://, wss://)
@@ -38,6 +47,8 @@ fn get_domain_and_port_from_url(url: &str) -> &str {
     &after_at[..domain_end]
 }
 
+/// TLS 캐시를 업데이트합니다 (삽입 또는 업데이트).
+/// 평문 URL은 캐싱하지 않습니다.
 #[inline]
 pub fn upsert_tls_cache(url: &str, tls_type: TlsType, danger_accept_invalid_cert: bool) {
     if is_plain(url) {
@@ -45,7 +56,7 @@ pub fn upsert_tls_cache(url: &str, tls_type: TlsType, danger_accept_invalid_cert
     }
 
     let domain_port = get_domain_and_port_from_url(url);
-    // Use curly braces to ensure the lock is released immediately.
+    // 락이 즉시 해제되도록 중괄호 사용
     {
         URL_TLS_TYPE
             .write()
@@ -60,9 +71,10 @@ pub fn upsert_tls_cache(url: &str, tls_type: TlsType, danger_accept_invalid_cert
     }
 }
 
+/// TLS 캐시를 비웁니다.
 #[inline]
 pub fn reset_tls_cache() {
-    // Use curly braces to ensure the lock is released immediately.
+    // 락이 즉시 해제되도록 중괄호 사용
     {
         URL_TLS_TYPE.write().unwrap().clear();
     }
@@ -71,6 +83,8 @@ pub fn reset_tls_cache() {
     }
 }
 
+/// URL의 캐시된 TLS 타입을 반환합니다.
+/// 평문 URL은 TlsType::Plain을 반환합니다.
 #[inline]
 pub fn get_cached_tls_type(url: &str) -> Option<TlsType> {
     if is_plain(url) {
@@ -80,6 +94,8 @@ pub fn get_cached_tls_type(url: &str) -> Option<TlsType> {
     URL_TLS_TYPE.read().unwrap().get(domain_port).cloned()
 }
 
+/// URL의 캐시된 무효 인증서 수락 여부를 반환합니다.
+/// 보안 설정에 의해 비활성화되면 항상 false를 반환합니다.
 #[inline]
 pub fn get_cached_tls_accept_invalid_cert(url: &str) -> Option<bool> {
     if !allow_insecure_tls_fallback() {

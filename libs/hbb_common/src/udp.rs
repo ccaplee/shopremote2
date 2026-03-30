@@ -9,26 +9,32 @@ use tokio::net::{lookup_host, ToSocketAddrs, UdpSocket};
 use tokio_socks::{udp::Socks5UdpFramed, IntoTargetAddr, TargetAddr, ToProxyAddrs};
 use tokio_util::{codec::BytesCodec, udp::UdpFramed};
 
+/// UDP 기반의 프레임 소켓입니다.
+/// 직접 연결 또는 SOCKS5 프록시를 통한 연결을 지원합니다.
 pub enum FramedSocket {
+    // 직접 UDP 연결
     Direct(UdpFramed<BytesCodec>),
+    // SOCKS5 프록시를 통한 UDP 연결
     ProxySocks(Socks5UdpFramed),
 }
 
+/// 새로운 UDP 소켓을 생성합니다.
+/// buf_size: 수신 버퍼 크기 (0이면 기본값 사용)
+/// reuse: true일 때 주소 재사용 활성화
 fn new_socket(addr: SocketAddr, reuse: bool, buf_size: usize) -> Result<Socket, std::io::Error> {
     let socket = match addr {
         SocketAddr::V4(..) => Socket::new(Domain::ipv4(), Type::dgram(), None),
         SocketAddr::V6(..) => Socket::new(Domain::ipv6(), Type::dgram(), None),
     }?;
     if reuse {
-        // windows has no reuse_port, but its reuse_address
-        // almost equals to unix's reuse_port + reuse_address,
-        // though may introduce nondeterministic behavior
-        // illumos has no support for SO_REUSEPORT
+        // Windows에는 reuse_port가 없지만 reuse_address가 유사 역할
+        // Unix의 reuse_port + reuse_address와 거의 같지만 비결정적 동작 가능
+        // illumos는 SO_REUSEPORT 미지원
         #[cfg(all(unix, not(target_os = "illumos")))]
         socket.set_reuse_port(true).ok();
         socket.set_reuse_address(true).ok();
     }
-    // only nonblocking work with tokio, https://stackoverflow.com/questions/64649405/receiver-on-tokiompscchannel-only-receives-messages-when-buffer-is-full
+    // tokio와 함께 작동하려면 논블로킹만 지원됨
     socket.set_nonblocking(true)?;
     if buf_size > 0 {
         socket.set_recv_buffer_size(buf_size).ok();
@@ -46,10 +52,14 @@ fn new_socket(addr: SocketAddr, reuse: bool, buf_size: usize) -> Result<Socket, 
 }
 
 impl FramedSocket {
+    /// 직접 UDP 소켓을 생성합니다 (주소 재사용 없음, 버퍼 크기 기본값).
     pub async fn new<T: ToSocketAddrs>(addr: T) -> ResultType<Self> {
         Self::new_reuse(addr, false, 0).await
     }
 
+    /// 옵션을 포함하여 직접 UDP 소켓을 생성합니다.
+    /// reuse: true일 때 SO_REUSEADDR/SO_REUSEPORT 설정
+    /// buf_size: 0이면 기본 수신 버퍼 크기
     pub async fn new_reuse<T: ToSocketAddrs>(
         addr: T,
         reuse: bool,
@@ -65,6 +75,8 @@ impl FramedSocket {
         )))
     }
 
+    /// SOCKS5 프록시를 통한 UDP 소켓을 생성합니다.
+    /// 인증 정보(username, password)는 선택사항입니다.
     pub async fn new_proxy<'a, 't, P: ToProxyAddrs, T: ToSocketAddrs>(
         proxy: P,
         local: T,
@@ -73,8 +85,10 @@ impl FramedSocket {
         ms_timeout: u64,
     ) -> ResultType<Self> {
         let framed = if username.trim().is_empty() {
+            // 인증 없는 SOCKS5 연결
             super::timeout(ms_timeout, Socks5UdpFramed::connect(proxy, Some(local))).await??
         } else {
+            // 인증 있는 SOCKS5 연결
             super::timeout(
                 ms_timeout,
                 Socks5UdpFramed::connect_with_password(proxy, Some(local), username, password),
