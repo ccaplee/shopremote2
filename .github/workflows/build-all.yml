@@ -8,6 +8,9 @@ on:
         required: false
         default: 'nightly'
 
+permissions:
+  contents: write
+
 jobs:
   build-all-platforms:
     uses: ./.github/workflows/flutter-build.yml
