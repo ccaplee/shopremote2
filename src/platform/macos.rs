@@ -63,29 +63,29 @@ fn get_update_temp_dir_string() -> String {
 /// 경합 상태를 방지
 static CG_CURSOR_MUTEX: Mutex<()> = Mutex::new(());
 
-/// macOS 네이티브 C 함수 정의
+// macOS 네이티브 C 함수 정의
 extern "C" {
-    /// 현재 커서 시드값 조회 (커서 변경 감지)
+    // 현재 커서 시드값 조회 (커서 변경 감지)
     fn CGSCurrentCursorSeed() -> i32;
-    /// CoreGraphics 이벤트 생성
+    // CoreGraphics 이벤트 생성
     fn CGEventCreate(r: *const c_void) -> *const c_void;
-    /// CoreGraphics 이벤트의 위치 조회
+    // CoreGraphics 이벤트의 위치 조회
     fn CGEventGetLocation(e: *const c_void) -> CGPoint;
-    /// Accessibility 신뢰 확인 프롬프트 옵션
+    // Accessibility 신뢰 확인 프롬프트 옵션
     static kAXTrustedCheckOptionPrompt: CFStringRef;
-    /// Accessibility API 신뢰 여부 확인
+    // Accessibility API 신뢰 여부 확인
     fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> BOOL;
-    /// 입력 모니터링 권한 상태
+    // 입력 모니터링 권한 상태
     fn InputMonitoringAuthStatus(_: BOOL) -> BOOL;
-    /// 화면 녹화 권한 여부 확인
+    // 화면 녹화 권한 여부 확인
     fn IsCanScreenRecording(_: BOOL) -> BOOL;
-    /// 새로운 화면 캡처 확인 API 사용 가능 여부
+    // 새로운 화면 캡처 확인 API 사용 가능 여부
     fn CanUseNewApiForScreenCaptureCheck() -> BOOL;
-    /// 관리자 권한 확인
+    // 관리자 권한 확인
     fn MacCheckAdminAuthorization() -> BOOL;
-    /// macOS 디스플레이의 해상도 모드 개수 조회
+    // macOS 디스플레이의 해상도 모드 개수 조회
     fn MacGetModeNum(display: u32, numModes: *mut u32) -> BOOL;
-    /// macOS 디스플레이의 모든 해상도 모드 조회
+    // macOS 디스플레이의 모든 해상도 모드 조회
     fn MacGetModes(
         display: u32,
         widths: *mut u32,
@@ -94,15 +94,15 @@ extern "C" {
         max: u32,
         numModes: *mut u32,
     ) -> BOOL;
-    /// macOS 버전(major) 조회
+    // macOS 버전(major) 조회
     fn majorVersion() -> u32;
-    /// macOS 디스플레이의 현재 해상도 조회
+    // macOS 디스플레이의 현재 해상도 조회
     fn MacGetMode(display: u32, width: *mut u32, height: *mut u32) -> BOOL;
-    /// macOS 디스플레이 해상도 설정
+    // macOS 디스플레이 해상도 설정
     fn MacSetMode(display: u32, width: u32, height: u32, tryHiDPI: bool) -> BOOL;
-    /// 마우스 커서 위치 설정
+    // 마우스 커서 위치 설정
     fn CGWarpMouseCursorPosition(newCursorPosition: CGPoint) -> CGError;
-    /// 마우스 및 커서 위치 연동 설정
+    // 마우스 및 커서 위치 연동 설정
     fn CGAssociateMouseAndMouseCursorPosition(connected: BooleanT) -> CGError;
 }
 

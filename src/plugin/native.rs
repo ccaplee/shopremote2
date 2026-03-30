@@ -23,16 +23,16 @@ pub struct NativeReturnValue {
     pub data: *const c_void,
 }
 
-/// 플러그인으로부터 받은 네이티브 콜을 처리하는 콜백 함수
-///
-/// # 매개변수
-/// * `method` - 호출할 메서드 이름 (UTF-8 널 종료 문자열)
-/// * `json` - 메서드 파라미터 (JSON 형식, UTF-8 널 종료 문자열)
-/// * `raw` - 추가 바이너리 데이터 (선택사항)
-/// * `raw_len` - 추가 바이너리 데이터의 길이
-///
-/// # 반환값
-/// 메서드 호출 결과를 포함한 NativeReturnValue
+// 플러그인으로부터 받은 네이티브 콜을 처리하는 콜백 함수
+//
+// # 매개변수
+// * `method` - 호출할 메서드 이름 (UTF-8 널 종료 문자열)
+// * `json` - 메서드 파라미터 (JSON 형식, UTF-8 널 종료 문자열)
+// * `raw` - 추가 바이너리 데이터 (선택사항)
+// * `raw_len` - 추가 바이너리 데이터의 길이
+//
+// # 반환값
+// 메서드 호출 결과를 포함한 NativeReturnValue
 pub(super) extern "C" fn cb_native_data(
     method: *const c_char,
     json: *const c_char,

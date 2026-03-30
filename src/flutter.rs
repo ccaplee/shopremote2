@@ -99,8 +99,8 @@ fn load_plugin_in_app_path(dll_name: &str) -> Result<Library, LibError> {
     }
 }
 
-/// FFI for rustdesk core's main entry.
-/// Return true if the app should continue running with UI(possibly Flutter), false if the app should exit.
+// FFI for rustdesk core's main entry.
+// Return true if the app should continue running with UI(possibly Flutter), false if the app should exit.
 #[cfg(not(windows))]
 #[no_mangle]
 pub extern "C" fn rustdesk_core_main() -> bool {

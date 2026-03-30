@@ -170,7 +170,7 @@ extern "C" fn application_will_terminate(_this: &mut Object, _: Sel, _sender: id
     YES
 }
 
-/// This handles menu items in the case that all windows are closed.
+// This handles menu items in the case that all windows are closed.
 extern "C" fn handle_menu_item(this: &mut Object, _: Sel, item: id) {
     unsafe {
         let tag: isize = msg_send![item, tag];

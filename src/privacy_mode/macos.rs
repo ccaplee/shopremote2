@@ -2,7 +2,7 @@
 use super::{PrivacyMode, PrivacyModeState};
 use hbb_common::{anyhow::anyhow, ResultType};
 
-/// macOS 네이티브 함수: 프라이버시 모드 설정
+// macOS 네이티브 함수: 프라이버시 모드 설정
 extern "C" {
     fn MacSetPrivacyMode(on: bool) -> bool;
 }

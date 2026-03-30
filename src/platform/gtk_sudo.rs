@@ -628,8 +628,8 @@ fn turn_off_echo(fd: RawFd) -> Result<(), Error> {
     Ok(())
 }
 
-/// 프로세스 종료 시 터미널 에코 복구
-/// 비정상 종료 시에도 터미널 설정이 원래대로 복구되도록 함
+// 프로세스 종료 시 터미널 에코 복구
+// 비정상 종료 시에도 터미널 설정이 원래대로 복구되도록 함
 pub extern "C" fn turn_on_echo_shutdown_hook() {
     let fd = std::io::stdin().as_raw_fd();
     if let Ok(mut termios) = termios::Termios::from_fd(fd) {

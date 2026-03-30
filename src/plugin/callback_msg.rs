@@ -116,18 +116,18 @@ macro_rules! early_return_value {
     };
 }
 
-/// Callback to send message to peer or ui.
-/// peer, target, id are utf8 strings(null terminated).
-///
-/// peer:    The peer id.
-/// target:  "peer" or "ui".
-/// id:      The id of this plugin.
-/// content: The content.
-/// len:     The length of the content.
-///
-/// Return null ptr if success.
-/// Return the error message if failed.  `i32-String` without dash, i32 is a signed little-endian number, the String is utf8 string.
-/// The plugin allocate memory with `libc::malloc` and return the pointer.
+// Callback to send message to peer or ui.
+// peer, target, id are utf8 strings(null terminated).
+//
+// peer:    The peer id.
+// target:  "peer" or "ui".
+// id:      The id of this plugin.
+// content: The content.
+// len:     The length of the content.
+//
+// Return null ptr if success.
+// Return the error message if failed.  `i32-String` without dash, i32 is a signed little-endian number, the String is utf8 string.
+// The plugin allocate memory with `libc::malloc` and return the pointer.
 #[no_mangle]
 pub(super) extern "C" fn cb_msg(
     peer: *const c_char,

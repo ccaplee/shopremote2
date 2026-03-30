@@ -379,13 +379,13 @@ impl ManagerConfig {
     }
 }
 
-/// 로컬 피어 ID를 반환하는 콜백 함수
+// 로컬 피어 ID를 반환하는 콜백 함수
 pub(super) extern "C" fn cb_get_local_peer_id() -> *const c_char {
     str_to_cstr_ret(&get_id())
 }
 
-/// 설정 값을 가져오는 콜백 함수
-/// peer가 nullptr이면 공유 설정을 반환합니다
+// 설정 값을 가져오는 콜백 함수
+// peer가 nullptr이면 공유 설정을 반환합니다
 pub(super) extern "C" fn cb_get_conf(
     peer: *const c_char,
     id: *const c_char,
