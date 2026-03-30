@@ -21,12 +21,25 @@ use tokio::{
 use tokio_socks::IntoTargetAddr;
 use tokio_util::codec::Framed;
 
+/// TCP 스트림의 기본 특성(trait)입니다.
+/// AsyncRead와 AsyncWrite를 모두 지원해야 합니다.
 pub trait TcpStreamTrait: AsyncRead + AsyncWrite + Unpin {}
+/// 동적 TCP 스트림 래퍼입니다.
+/// 다양한 TCP 스트림 구현을 한 인터페이스로 처리할 수 있게 합니다.
 pub struct DynTcpStream(pub Box<dyn TcpStreamTrait + Send + Sync>);
 
+/// 암호화 상태를 관리하는 구조체입니다.
+/// Key: 암호화 키
+/// u64: 송신 시퀀스 번호
+/// u64: 수신 시퀀스 번호
 #[derive(Clone)]
 pub struct Encrypt(pub Key, pub u64, pub u64);
 
+/// TCP 위에 프로토콜을 올린 프레임 스트림입니다.
+/// Framed<DynTcpStream, BytesCodec>: 인코더/디코더 포함 스트림
+/// SocketAddr: 로컬 주소
+/// Option<Encrypt>: 암호화 정보 (Some = 암호화됨, None = 평문)
+/// u64: 송신 타임아웃 (밀리초)
 pub struct FramedStream(
     pub Framed<DynTcpStream, BytesCodec>,
     pub SocketAddr,
@@ -62,16 +75,18 @@ impl DerefMut for DynTcpStream {
     }
 }
 
+/// 새 TCP 소켓을 생성합니다.
+/// 주어진 주소로 바인딩하고, 필요시 주소 재사용을 활성화합니다.
+/// reuse = true일 때:
+/// - Windows: SO_REUSEADDR (Unix의 SO_REUSEPORT + SO_REUSEADDR와 유사하지만 비결정적 동작 가능)
+/// - Unix (illumos 제외): SO_REUSEPORT + SO_REUSEADDR
+/// - illumos: SO_REUSEADDR만 사용 (SO_REUSEPORT 미지원)
 pub(crate) fn new_socket(addr: std::net::SocketAddr, reuse: bool) -> Result<TcpSocket, std::io::Error> {
     let socket = match addr {
         std::net::SocketAddr::V4(..) => TcpSocket::new_v4()?,
         std::net::SocketAddr::V6(..) => TcpSocket::new_v6()?,
     };
     if reuse {
-        // windows has no reuse_port, but its reuse_address
-        // almost equals to unix's reuse_port + reuse_address,
-        // though may introduce nondeterministic behavior
-        // illumos has no support for SO_REUSEPORT
         #[cfg(all(unix, not(target_os = "illumos")))]
         socket.set_reuseport(true).ok();
         socket.set_reuseaddr(true).ok();
@@ -294,15 +309,20 @@ impl AsyncWrite for DynTcpStream {
 impl<R: AsyncRead + AsyncWrite + Unpin> TcpStreamTrait for R {}
 
 impl Encrypt {
+    /// 암호화 인스턴스를 새로 생성합니다.
+    /// 초기 송수신 시퀀스 번호는 0입니다.
     pub fn new(key: Key) -> Self {
         Self(key, 0, 0)
     }
 
+    /// BytesMut을 복호화합니다.
+    /// 복호화 실패 시 에러를 반환합니다.
+    /// 성공 시 bytes의 내용이 평문으로 교체됩니다.
     pub fn dec(&mut self, bytes: &mut BytesMut) -> Result<(), Error> {
         if bytes.len() <= 1 {
             return Ok(());
         }
-        self.2 += 1;
+        self.2 += 1;  // 수신 시퀀스 번호 증가
         let nonce = FramedStream::get_nonce(self.2);
         match secretbox::open(bytes, &nonce, &self.0) {
             Ok(res) => {
@@ -314,8 +334,9 @@ impl Encrypt {
         }
     }
 
+    /// 데이터를 암호화하여 Vec<u8>로 반환합니다.
     pub fn enc(&mut self, data: &[u8]) -> Vec<u8> {
-        self.1 += 1;
+        self.1 += 1;  // 송신 시퀀스 번호 증가
         let nonce = FramedStream::get_nonce(self.1);
         secretbox::seal(&data, &nonce, &self.0)
     }

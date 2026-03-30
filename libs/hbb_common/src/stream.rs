@@ -5,11 +5,15 @@ use sodiumoxide::crypto::secretbox::Key;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
 
-// support Websocket and tcp.
+/// 다양한 전송 프로토콜을 지원하는 통합 스트림 열거형입니다.
+/// WebSocket, TCP, WebRTC 중 하나를 선택하여 사용할 수 있습니다.
 pub enum Stream {
     #[cfg(feature = "webrtc")]
+    // WebRTC 스트림 - P2P 통신을 위한 프로토콜
     WebRTC(webrtc::WebRTCStream),
+    // WebSocket 스트림 - HTTP 기반 양방향 통신
     WebSocket(websocket::WsFramedStream),
+    // TCP 스트림 - 기본 TCP 기반 통신
     Tcp(tcp::FramedStream),
 }
 
@@ -87,7 +91,8 @@ impl Stream {
         }
     }
 
-    /// establish connect from websocket
+    /// WebSocket 연결을 설정합니다.
+    /// 로컬 주소, 프록시 설정, 타임아웃을 지정할 수 있습니다.
     #[inline]
     pub async fn connect_websocket(
         url: impl AsRef<str>,
@@ -101,7 +106,8 @@ impl Stream {
         Ok(Self::WebSocket(ws_stream))
     }
 
-    /// send message
+    /// 프로토콜 버퍼 메시지를 전송합니다.
+    /// 현재 스트림의 종류(WebRTC/WebSocket/TCP)에 따라 자동으로 라우팅됩니다.
     #[inline]
     pub async fn send(&mut self, msg: &impl protobuf::Message) -> ResultType<()> {
         match self {
@@ -112,7 +118,8 @@ impl Stream {
         }
     }
 
-    /// receive message
+    /// 스트림으로부터 메시지를 수신합니다.
+    /// 현재 스트림의 종류에 따라 자동으로 라우팅됩니다.
     #[inline]
     pub async fn next(&mut self) -> Option<Result<bytes::BytesMut, std::io::Error>> {
         match self {

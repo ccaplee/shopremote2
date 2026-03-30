@@ -1,5 +1,8 @@
+// 압축 모듈 - 데이터 압축 기능 제공
 pub mod compress;
+// 플랫폼별 특화 모듈 - 다양한 OS에 대한 플랫폼 특정 기능
 pub mod platform;
+// 프로토콜 버퍼 메시지 정의
 pub mod protos;
 pub use bytes;
 use config::Config;
@@ -17,17 +20,25 @@ use std::{
 };
 pub use tokio;
 pub use tokio_util;
+// 프록시 지원 모듈 - HTTP/HTTPS/SOCKS5 프록시 연결
 pub mod proxy;
+// 소켓 클라이언트 모듈 - 소켓 기반 통신 유틸리티
 pub mod socket_client;
+// TCP 통신 모듈 - TCP 프로토콜 처리
 pub mod tcp;
+// UDP 통신 모듈 - UDP 프로토콜 처리
 pub mod udp;
 pub use env_logger;
 pub use log;
+// 바이트 인코딩/디코딩 코덱 모듈
 pub mod bytes_codec;
 pub use anyhow::{self, bail};
 pub use futures_util;
+// 설정 관리 모듈 - 애플리케이션 전역 설정
 pub mod config;
+// 파일 시스템 작업 모듈 - 파일 I/O 유틸리티
 pub mod fs;
+// 메모리 모듈
 pub mod mem;
 pub use lazy_static;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -38,10 +49,12 @@ pub use sodiumoxide;
 pub use tokio_socks;
 pub use tokio_socks::IntoTargetAddr;
 pub use tokio_socks::TargetAddr;
+// 비밀번호 보안 모듈 - 암호화/복호화 및 비밀번호 생성
 pub mod password_security;
 pub use chrono;
 pub use directories_next;
 pub use libc;
+// 키보드 모드 처리 모듈
 pub mod keyboard;
 pub use base64;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -55,8 +68,10 @@ pub use sysinfo;
 pub use thiserror;
 pub use toml;
 pub use uuid;
+// 기기 지문 모듈 - 기기 고유 정보 생성 및 검증
 pub mod fingerprint;
 pub use flexi_logger;
+// 스트림 통합 모듈 - WebSocket/TCP/WebRTC 통합 인터페이스
 pub mod stream;
 pub mod websocket;
 #[cfg(feature = "webrtc")]
@@ -65,7 +80,9 @@ pub mod webrtc;
 pub use rustls_platform_verifier;
 pub use stream::Stream;
 pub use whoami;
+// TLS/SSL 인증서 검증 모듈
 pub mod tls;
+// TLS 증명서 검증자 모듈 - 안전하고 위험한 검증 옵션
 pub mod verifier;
 pub use async_recursion;
 #[cfg(target_os = "linux")]
@@ -74,6 +91,7 @@ pub use libloading;
 #[cfg(target_os = "linux")]
 pub use x11;
 
+// 세션 ID 타입 정의 - UUID 기반 고유한 세션 식별자
 pub type SessionID = uuid::Uuid;
 
 #[inline]
@@ -118,11 +136,12 @@ pub fn timeout<T: std::future::Future>(ms: u64, future: T) -> tokio::time::Timeo
     tokio::time::timeout(std::time::Duration::from_millis(ms), future)
 }
 
+// 결과 타입 별칭 - 성공 또는 에러 반환
 pub type ResultType<F, E = anyhow::Error> = anyhow::Result<F, E>;
 
-/// Certain router and firewalls scan the packet and if they
-/// find an IP address belonging to their pool that they use to do the NAT mapping/translation, so here we mangle the ip address
-
+/// 주소 변조(Address Mangling) 구조체
+/// 일부 라우터와 방화벽은 NAT 매핑/변환에 사용하는 IP 주소 풀에 속하는 패킷을 스캔하므로,
+/// 여기서 IP 주소를 변조하여 이러한 필터링을 우회합니다.
 pub struct AddrMangle();
 
 #[inline]
@@ -140,8 +159,9 @@ pub fn try_into_v4(addr: SocketAddr) -> SocketAddr {
 }
 
 impl AddrMangle {
+    /// 소켓 주소를 바이트 배열로 인코딩합니다.
+    /// [:1]:<port> 형식에서는 작동하지 않습니다.
     pub fn encode(addr: SocketAddr) -> Vec<u8> {
-        // not work with [:1]:<port>
         let addr = try_into_v4(addr);
         match addr {
             SocketAddr::V4(addr_v4) => {
@@ -173,6 +193,7 @@ impl AddrMangle {
         }
     }
 
+    /// 바이트 배열을 소켓 주소로 디코딩합니다.
     pub fn decode(bytes: &[u8]) -> SocketAddr {
         use std::convert::TryInto;
 
@@ -199,6 +220,8 @@ impl AddrMangle {
     }
 }
 
+/// URL에서 버전 문자열을 추출합니다.
+/// 예: "https://example.com/app-1.2.3" -> "-1.2.3"
 pub fn get_version_from_url(url: &str) -> String {
     let n = url.chars().count();
     let a = url.chars().rev().position(|x| x == '-');
@@ -225,6 +248,9 @@ pub fn get_version_from_url(url: &str) -> String {
     "".to_owned()
 }
 
+/// 빌드 타임에 버전 정보를 생성합니다.
+/// Cargo.toml에서 버전을 읽고 version.rs 파일을 생성합니다.
+/// 빌드 날짜도 함께 기록됩니다.
 pub fn gen_version() {
     println!("cargo:rerun-if-changed=Cargo.toml");
     use std::io::prelude::*;
@@ -237,7 +263,7 @@ pub fn gen_version() {
             break;
         }
     }
-    // generate build date
+    // 빌드 날짜 생성
     let build_date = format!("{}", chrono::Local::now().format("%Y-%m-%d %H:%M"));
     file.write_all(
         format!("#[allow(dead_code)]\npub const BUILD_DATE: &str = \"{build_date}\";\n").as_bytes(),
@@ -246,6 +272,7 @@ pub fn gen_version() {
     file.sync_all().ok();
 }
 
+/// 파일의 각 라인을 반복 가능한 객체로 반환합니다.
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where
     P: AsRef<Path>,
@@ -254,21 +281,27 @@ where
     Ok(io::BufReader::new(file).lines())
 }
 
+/// 커스텀 ID 유효성을 검증합니다.
+/// 형식: 첫 글자는 알파벳, 이후 5~15자의 단어문자 또는 하이픈
+/// 예: "device-123", "MyDeviceId"
 pub fn is_valid_custom_id(id: &str) -> bool {
     regex::Regex::new(r"^[a-zA-Z][\w-]{5,15}$")
         .unwrap()
         .is_match(id)
 }
 
-// Support 1.1.10-1, the number after - is a patch version.
+/// 버전 문자열을 정수로 변환합니다.
+/// 지원 형식: "1.1.10" 또는 "1.1.10-1" (- 뒤의 숫자는 패치 버전)
+/// 변환 예: 1.1.10 -> 1001100, 1.2.3 -> 1002030
+/// 패치 버전을 위해 마지막 번호에 10을 곱합니다.
 pub fn get_version_number(v: &str) -> i64 {
     let mut versions = v.split('-');
 
     let mut n = 0;
 
-    // The first part is the version number.
-    // 1.1.10 -> 1001100, 1.2.3 -> 1001030, multiple the last number by 10
-    // to leave space for patch version.
+    // 첫 번째 부분은 버전 번호입니다.
+    // 1.1.10 -> 1001100, 1.2.3 -> 1002030
+    // 패치 버전을 위해 마지막 숫자에 10을 곱합니다.
     if let Some(v) = versions.next() {
         let mut last = 0;
         for x in v.split('.') {
@@ -279,27 +312,29 @@ pub fn get_version_number(v: &str) -> i64 {
         n += last * 10;
     }
 
+    // 패치 버전 추가
     if let Some(v) = versions.next() {
         n += v.parse::<i64>().unwrap_or(0);
     }
 
-    // Ignore the rest
-
     n
 }
 
+/// 파일의 수정 시간을 반환합니다.
 pub fn get_modified_time(path: &std::path::Path) -> SystemTime {
     std::fs::metadata(path)
         .map(|m| m.modified().unwrap_or(UNIX_EPOCH))
         .unwrap_or(UNIX_EPOCH)
 }
 
+/// 파일의 생성 시간을 반환합니다.
 pub fn get_created_time(path: &std::path::Path) -> SystemTime {
     std::fs::metadata(path)
         .map(|m| m.created().unwrap_or(UNIX_EPOCH))
         .unwrap_or(UNIX_EPOCH)
 }
 
+/// 실행 파일의 수정 또는 생성 시간 중 더 최근의 시간을 반환합니다.
 pub fn get_exe_time() -> SystemTime {
     std::env::current_exe().map_or(UNIX_EPOCH, |path| {
         let m = get_modified_time(&path);
@@ -312,9 +347,10 @@ pub fn get_exe_time() -> SystemTime {
     })
 }
 
-/// Known cases where machine_uid::get() may fail:
-/// - Windows shutdown: "The media is write protected. (os error 19)"
-/// - macOS (hard to reproduce, reproduced at login screen): "No matching IOPlatformUUID in `ioreg -rd1 -c IOPlatformExpertDevice` command"
+/// 기기의 고유 UUID를 반환합니다.
+/// machine_uid::get() 실패 사례:
+/// - Windows 종료 시: "The media is write protected. (os error 19)"
+/// - macOS (재현 어려움, 로그인 화면에서 재현됨): "No matching IOPlatformUUID in `ioreg -rd1 -c IOPlatformExpertDevice` command"
 pub fn get_uuid() -> Vec<u8> {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {

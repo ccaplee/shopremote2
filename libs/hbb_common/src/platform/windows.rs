@@ -23,20 +23,24 @@ use winapi::{
 };
 
 lazy_static::lazy_static! {
+    /// 최근 1분간의 CPU 사용률 캐시 (값, 시간)
     static ref CPU_USAGE_ONE_MINUTE: Arc<Mutex<Option<(f64, Instant)>>> = Arc::new(Mutex::new(None));
 }
 
-// https://github.com/mgostIH/process_list/blob/master/src/windows/mod.rs
+/// RAII 패턴을 사용하는 Windows 핸들 래퍼입니다.
+/// 스코프를 벗어나면 자동으로 핸들을 닫습니다.
+/// 참고: https://github.com/mgostIH/process_list/blob/master/src/windows/mod.rs
 #[repr(transparent)]
 pub struct RAIIHandle(pub HANDLE);
 
 impl Drop for RAIIHandle {
     fn drop(&mut self) {
-        // This never gives problem except when running under a debugger.
+        // 디버거 실행 시 제외하고는 문제가 없습니다.
         unsafe { CloseHandle(self.0) };
     }
 }
 
+/// RAII 패턴을 사용하는 PDH 쿼리 핸들 래퍼입니다.
 #[repr(transparent)]
 pub(self) struct RAIIPDHQuery(pub PDH_HQUERY);
 
@@ -46,20 +50,23 @@ impl Drop for RAIIPDHQuery {
     }
 }
 
+/// CPU 성능 모니터링을 시작합니다.
+/// Windows 성능 데이터(Performance Data)를 주기적으로 수집합니다.
+/// 참고:
+/// - https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
+/// - https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhcollectquerydataex
+///
+/// 왜 작업 관리자보다 낮은 값이 나오나:
+/// - https://aaron-margosis.medium.com/task-managers-cpu-numbers-are-all-but-meaningless-2d165b421e43
+/// - 따라서 작업 관리자보다 프로세스 탐색기와 비교하는 것이 정확합니다.
 pub fn start_cpu_performance_monitor() {
-    // Code from:
-    // https://learn.microsoft.com/en-us/windows/win32/perfctrs/collecting-performance-data
-    // https://learn.microsoft.com/en-us/windows/win32/api/pdh/nf-pdh-pdhcollectquerydataex
-    // Why value lower than taskManager:
-    // https://aaron-margosis.medium.com/task-managers-cpu-numbers-are-all-but-meaningless-2d165b421e43
-    // Therefore we should compare with Precess Explorer rather than taskManager
 
     let f = || unsafe {
-        // load avg or cpu usage, test with prime95.
-        // Prefer cpu usage because we can get accurate value from Precess Explorer.
+        // 로드 평균 또는 CPU 사용률을 수집합니다 (prime95로 테스트됨).
+        // CPU 사용률을 선호합니다 (프로세스 탐색기와 비교 가능).
         // const COUNTER_PATH: &'static str = "\\System\\Processor Queue Length\0";
         const COUNTER_PATH: &'static str = "\\Processor(_total)\\% Processor Time\0";
-        const SAMPLE_INTERVAL: DWORD = 2; // 2 second
+        const SAMPLE_INTERVAL: DWORD = 2;  // 2초 간격으로 샘플링
 
         let mut ret;
         let mut query: PDH_HQUERY = std::mem::zeroed();
@@ -138,6 +145,8 @@ pub fn start_cpu_performance_monitor() {
     });
 }
 
+/// 최근 1분간의 CPU 사용률을 반환합니다.
+/// 30초 이내에 업데이트된 데이터만 반환합니다 (오래된 데이터는 None).
 pub fn cpu_uage_one_minute() -> Option<f64> {
     let v = CPU_USAGE_ONE_MINUTE.lock().unwrap().clone();
     if let Some((v, instant)) = v {
@@ -148,6 +157,8 @@ pub fn cpu_uage_one_minute() -> Option<f64> {
     None
 }
 
+/// CPU 사용률을 동기화합니다.
+/// 서버에서 보낸 CPU 사용률 값으로 캐시를 업데이트합니다.
 pub fn sync_cpu_usage(cpu_usage: Option<f64>) {
     let v = match cpu_usage {
         Some(cpu_usage) => Some((cpu_usage, Instant::now())),
@@ -157,8 +168,10 @@ pub fn sync_cpu_usage(cpu_usage: Option<f64>) {
     log::info!("cpu usage synced: {:?}", cpu_usage);
 }
 
-// https://learn.microsoft.com/en-us/windows/win32/sysinfo/targeting-your-application-at-windows-8-1
-// https://github.com/nodejs/node-convergence-archive/blob/e11fe0c2777561827cdb7207d46b0917ef3c42a7/deps/uv/src/win/util.c#L780
+/// Windows 버전이 지정된 버전 이상인지 확인합니다.
+/// 참고:
+/// - https://learn.microsoft.com/en-us/windows/win32/sysinfo/targeting-your-application-at-windows-8-1
+/// - https://github.com/nodejs/node-convergence-archive/blob/e11fe0c2777561827cdb7207d46b0917ef3c42a7/deps/uv/src/win/util.c#L780
 pub fn is_windows_version_or_greater(
     os_major: u32,
     os_minor: u32,

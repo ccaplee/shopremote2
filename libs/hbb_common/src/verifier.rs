@@ -7,7 +7,9 @@ use tokio_rustls::rustls::{
     DigitallySignedStruct, Error as TLSError, SignatureScheme,
 };
 
-// https://github.com/seanmonstar/reqwest/blob/fd61bc93e6f936454ce0b978c6f282f06eee9287/src/tls.rs#L608
+/// 무조건 인증서를 수락하는 검증자입니다.
+/// 보안 설정이 비활성화될 때만 사용합니다.
+/// 참고: https://github.com/seanmonstar/reqwest/blob/fd61bc93e6f936454ce0b978c6f282f06eee9287/src/tls.rs#L608
 #[derive(Debug)]
 pub(crate) struct NoVerifier;
 
@@ -60,12 +62,14 @@ impl ServerCertVerifier for NoVerifier {
     }
 }
 
-/// A certificate verifier that tries a primary verifier first,
-/// and falls back to a platform verifier if the primary fails.
+/// 기본 검증자로 시도하고, 실패 시 플랫폼 검증자로 폴백합니다.
+/// Android와 iOS에서 시스템 인증서 저장소를 활용합니다.
 #[cfg(any(target_os = "android", target_os = "ios"))]
 #[derive(Debug)]
 struct FallbackPlatformVerifier {
+    // 기본 검증자 (WebPki)
     primary: Arc<dyn ServerCertVerifier>,
+    // 폴백 검증자 (플랫폼 네이티브)
     fallback: Arc<dyn ServerCertVerifier>,
 }
 
@@ -162,13 +166,16 @@ impl ServerCertVerifier for FallbackPlatformVerifier {
     }
 }
 
+/// WebPki 서버 검증자를 생성합니다.
+/// 번들된 webpki_roots와 시스템 네이티브 인증서 저장소에서 루트 인증서를 로드합니다.
+/// 이 방식은 reqwest와 tokio-tungstenite의 방식과 동일합니다.
+/// 참고:
+/// - https://github.com/snapview/tokio-tungstenite/blob/35d110c24c9d030d1608ec964d70c789dfb27452/src/tls.rs#L95
+/// - https://github.com/seanmonstar/reqwest/blob/b126ca49da7897e5d676639cdbf67a0f6838b586/src/async_impl/client.rs#L643
 fn webpki_server_verifier(
     provider: Arc<rustls::crypto::CryptoProvider>,
 ) -> ResultType<Arc<WebPkiServerVerifier>> {
-    // Load root certificates from both bundled webpki_roots and system-native certificate stores.
-    // This approach is consistent with how reqwest and tokio-tungstenite handle root certificates.
-    // https://github.com/snapview/tokio-tungstenite/blob/35d110c24c9d030d1608ec964d70c789dfb27452/src/tls.rs#L95
-    // https://github.com/seanmonstar/reqwest/blob/b126ca49da7897e5d676639cdbf67a0f6838b586/src/async_impl/client.rs#L643
+    // 번들된 webpki_roots와 시스템 네이티브 인증서 저장소에서 루트 인증서 로드
     let mut root_cert_store = rustls::RootCertStore::empty();
     root_cert_store.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
     let rustls_native_certs::CertificateResult { certs, errors, .. } =
@@ -178,8 +185,8 @@ fn webpki_server_verifier(
     }
     root_cert_store.add_parsable_certificates(certs);
 
-    // Build verifier using with_root_certificates behavior (WebPkiServerVerifier without CRLs).
-    // Both reqwest and tokio-tungstenite use this approach.
+    // with_root_certificates 동작을 사용하여 검증자 빌드 (CRL 없음)
+    // reqwest와 tokio-tungstenite 모두 이 방식 사용
     // https://github.com/seanmonstar/reqwest/blob/b126ca49da7897e5d676639cdbf67a0f6838b586/src/async_impl/client.rs#L749
     // https://github.com/snapview/tokio-tungstenite/blob/35d110c24c9d030d1608ec964d70c789dfb27452/src/tls.rs#L127
     // https://github.com/rustls/rustls/blob/1ee126adb3352a2dcd72420dcd6040351a6ddc1e/rustls/src/client/builder.rs#L47
@@ -200,6 +207,8 @@ fn webpki_server_verifier(
     Ok(verifier)
 }
 
+/// TLS 클라이언트 설정을 생성합니다.
+/// danger_accept_invalid_cert: true일 때 무효한 인증서도 수락합니다 (보안 위험).
 pub fn client_config(danger_accept_invalid_cert: bool) -> ResultType<ClientConfig> {
     if danger_accept_invalid_cert {
         client_config_danger()
@@ -208,6 +217,7 @@ pub fn client_config(danger_accept_invalid_cert: bool) -> ResultType<ClientConfi
     }
 }
 
+/// 안전한 TLS 클라이언트 설정을 생성합니다 (인증서 검증 활성화).
 pub fn client_config_safe() -> ResultType<ClientConfig> {
     // Use the default builder which uses the default protocol versions and crypto provider.
     // The with_protocol_versions API has been removed in rustls master branch:
@@ -248,6 +258,9 @@ pub fn client_config_safe() -> ResultType<ClientConfig> {
     }
 }
 
+/// 위험한 TLS 클라이언트 설정을 생성합니다 (인증서 검증 비활성화).
+/// 자체 서명 인증서나 만료된 인증서도 수락합니다.
+/// 중간자 공격(MITM)에 취약하므로 개발/테스트 환경에서만 사용하세요.
 pub fn client_config_danger() -> ResultType<ClientConfig> {
     let config = ClientConfig::builder()
         .dangerous()

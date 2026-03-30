@@ -2,16 +2,25 @@ use bytes::{Buf, BufMut, Bytes, BytesMut};
 use std::io;
 use tokio_util::codec::{Decoder, Encoder};
 
+/// 바이트 데이터를 인코딩/디코딩하는 코덱입니다.
+/// 길이-값(TLV) 형식으로 바이트 스트림을 처리합니다.
+/// raw 모드일 때는 길이 헤더 없이 모든 데이터를 전송합니다.
 #[derive(Debug, Clone, Copy)]
 pub struct BytesCodec {
+    // 디코딩 상태: 헤더 읽기 또는 데이터 읽기
     state: DecodeState,
+    // raw 모드: true일 때 길이 헤더 생략
     raw: bool,
+    // 최대 패킷 길이 제한 (보안)
     max_packet_length: usize,
 }
 
+/// 디코딩 상태를 나타냅니다.
 #[derive(Debug, Clone, Copy)]
 enum DecodeState {
+    // 헤더(길이 정보) 읽기
     Head,
+    // 데이터 읽기 (길이는 인수)
     Data(usize),
 }
 
@@ -22,6 +31,7 @@ impl Default for BytesCodec {
 }
 
 impl BytesCodec {
+    /// 새로운 BytesCodec를 생성합니다.
     pub fn new() -> Self {
         Self {
             state: DecodeState::Head,
@@ -30,14 +40,20 @@ impl BytesCodec {
         }
     }
 
+    /// raw 모드를 활성화합니다 (길이 헤더 생략).
     pub fn set_raw(&mut self) {
         self.raw = true;
     }
 
+    /// 최대 패킷 길이를 설정합니다 (초과 시 에러).
     pub fn set_max_packet_length(&mut self, n: usize) {
         self.max_packet_length = n;
     }
 
+    /// 헤더(길이 정보)를 디코딩합니다.
+    /// 헤더 형식:
+    /// - 1바이트: (길이 << 2) | 타입 (타입: 00=1바이트, 01=2바이트, 10=3바이트, 11=4바이트)
+    /// - 추가 바이트들: 길이 값 (리틀 엔디안)
     fn decode_head(&mut self, src: &mut BytesMut) -> io::Result<Option<usize>> {
         if src.is_empty() {
             return Ok(None);
@@ -65,6 +81,8 @@ impl BytesCodec {
         Ok(Some(n))
     }
 
+    /// 데이터를 디코딩합니다.
+    /// n바이트가 모두 수신될 때까지 기다립니다.
     fn decode_data(&self, n: usize, src: &mut BytesMut) -> io::Result<Option<BytesMut>> {
         if src.len() < n {
             return Ok(None);
