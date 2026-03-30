@@ -10,33 +10,48 @@ use hbb_common::protobuf::MessageField;
 use scrap::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-// https://github.com/rustdesk/rustdesk/discussions/6042, avoiding dbus call
+/// DBus 호출을 피하기 위한 디스플레이 서비스 구현
+/// 참고: https://github.com/rustdesk/rustdesk/discussions/6042
 
+/// 디스플레이 서비스의 이름
 pub const NAME: &'static str = "display";
 
+/// Windows 더미 디스플레이 크기 제한
 #[cfg(windows)]
 const DUMMY_DISPLAY_SIDE_MAX_SIZE: usize = 1024;
 
+/// 변경된 해상도 정보를 저장하는 구조체
+/// 원본 해상도와 변경된 해상도를 추적하여 복원 가능하게 함
 struct ChangedResolution {
+    /// 원본 해상도 (너비, 높이)
     original: (i32, i32),
+    /// 변경된 해상도 (너비, 높이)
     changed: (i32, i32),
 }
 
 lazy_static::lazy_static! {
+    /// Magnifier 캡처러 지원 여부 캐시
     static ref IS_CAPTURER_MAGNIFIER_SUPPORTED: bool = is_capturer_mag_supported();
+    /// 변경된 해상도 정보 맵 (디스플레이명 -> 변경 정보)
     static ref CHANGED_RESOLUTIONS: Arc<RwLock<HashMap<String, ChangedResolution>>> = Default::default();
-    // Initial primary display index.
-    // It should not be updated when displays changed.
+    /// 초기 주 디스플레이 인덱스
+    /// 디스플레이 변경 시에도 업데이트되지 않아야 함
     pub static ref PRIMARY_DISPLAY_IDX: usize = get_primary();
+    /// 디스플레이 동기화 정보
     static ref SYNC_DISPLAYS: Arc<Mutex<SyncDisplaysInfo>> = Default::default();
 }
 
-// https://github.com/rustdesk/rustdesk/pull/8537
+/// 디스플레이 변경 감지를 임시로 무시하는 플래그
+/// 참고: https://github.com/rustdesk/rustdesk/pull/8537
 static TEMP_IGNORE_DISPLAYS_CHANGED: AtomicBool = AtomicBool::new(false);
 
+/// 디스플레이 동기화 정보를 관리하는 구조체
+/// 클라이언트와 서버 간의 디스플레이 정보 동기화 상태를 추적
 #[derive(Default)]
 struct SyncDisplaysInfo {
+    /// 현재 디스플레이 정보 목록
     displays: Vec<DisplayInfo>,
+    /// 동기화 완료 여부
     is_synced: bool,
 }
 

@@ -24,30 +24,45 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// 전역 데스크톱 관리 상태
 lazy_static::lazy_static! {
+    /// 데스크톱 세션 실행 여부
     static ref DESKTOP_RUNNING: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    /// 데스크톱 매니저 인스턴스
     static ref DESKTOP_MANAGER: Arc<Mutex<Option<DesktopManager>>> = Arc::new(Mutex::new(None));
 }
 
+/// Linux 데스크톱 세션(Xorg+WM) 관리 구조체
+/// seat0(현재 세션)의 정보와 자식 프로세스(Xorg, Window Manager) 상태 추적
 #[derive(Debug)]
 struct DesktopManager {
+    /// seat0 (현재 활성 세션)의 사용자명
     seat0_username: String,
+    /// seat0의 디스플레이 서버 타입 (X11 또는 Wayland)
     seat0_display_server: String,
+    /// 새로 시작한 X 세션의 사용자명
     child_username: String,
+    /// 자식 프로세스 종료 신호 플래그
     child_exit: Arc<AtomicBool>,
+    /// 자식 프로세스 실행 중 여부 플래그
     is_child_running: Arc<AtomicBool>,
 }
 
+/// 데스크톱 매니저 상태 확인 및 종료 처리
 fn check_desktop_manager() {
     let mut desktop_manager = DESKTOP_MANAGER.lock().unwrap();
     if let Some(desktop_manager) = &mut (*desktop_manager) {
+        // 자식 프로세스가 실행 중이면 반환
         if desktop_manager.is_child_running.load(Ordering::SeqCst) {
             return;
         }
+        // 자식 프로세스 종료 신호 설정
         desktop_manager.child_exit.store(true, Ordering::SeqCst);
     }
 }
 
+/// 데스크톱 세션 관리 스레드 시작
+/// 별도 스레드에서 주기적으로 데스크톱 매니저 상태 확인
 pub fn start_xdesktop() {
     debug_assert!(crate::is_server());
     std::thread::spawn(|| {
@@ -63,12 +78,15 @@ pub fn start_xdesktop() {
     });
 }
 
+/// 데스크톱 세션 관리 종료
 pub fn stop_xdesktop() {
     DESKTOP_RUNNING.store(false, Ordering::SeqCst);
     *DESKTOP_MANAGER.lock().unwrap() = None;
 }
 
+/// Headless 모드 감지 (Xorg 또는 데스크톱 환경이 없는 경우)
 fn detect_headless() -> Option<&'static str> {
+    // Xorg 바이너리 존재 확인
     match run_cmds(&format!("which {}", DesktopManager::get_xorg())) {
         Ok(output) => {
             if output.trim().is_empty() {
@@ -80,6 +98,7 @@ fn detect_headless() -> Option<&'static str> {
         }
     }
 
+    // 데스크톱 세션 정의 파일 존재 확인
     match run_cmds("ls /usr/share/xsessions/") {
         Ok(output) => {
             if output.trim().is_empty() {
@@ -94,11 +113,15 @@ fn detect_headless() -> Option<&'static str> {
     None
 }
 
+/// 데스크톱 세션 시작 시도
+/// 사용자명과 암호를 받아서 X 세션 시작, 없으면 현재 세션 상태 반환
 pub fn try_start_desktop(_username: &str, _passsword: &str) -> String {
     debug_assert!(crate::is_server());
     if _username.is_empty() {
+        // 사용자명 미지정: 현재 활성 세션 사용자 확인
         let username = get_username();
         if username.is_empty() {
+            // 활성 세션 없음: headless 모드 확인
             if let Some(msg) = detect_headless() {
                 msg
             } else {
@@ -109,20 +132,23 @@ pub fn try_start_desktop(_username: &str, _passsword: &str) -> String {
         }
         .to_owned()
     } else {
+        // 사용자명 지정: 새 세션 시작 시도
         let username = get_username();
         if username == _username {
-            // No need to verify password here.
+            // 같은 사용자 이미 로그인: 암호 검증 불필요
             return "".to_owned();
         }
         if !username.is_empty() {
-            // Another user is logged in. No need to start a new xsession.
+            // 다른 사용자가 이미 로그인 중: 새 세션 시작 불필요
             return "".to_owned();
         }
 
+        // 데스크톱 환경 확인
         if let Some(msg) = detect_headless() {
             return msg.to_owned();
         }
 
+        // X 세션 시작 시도
         match try_start_x_session(_username, _passsword) {
             Ok((username, x11_ready)) => {
                 if x11_ready {
@@ -165,6 +191,7 @@ fn try_start_x_session(username: &str, password: &str) -> ResultType<(String, bo
     }
 }
 
+/// Headless 모드(그래픽 환경 없음) 여부 확인
 #[inline]
 pub fn is_headless() -> bool {
     DESKTOP_MANAGER
@@ -176,12 +203,15 @@ pub fn is_headless() -> bool {
         })
 }
 
+/// 현재 활성 데스크톱 세션의 사용자명 조회
 pub fn get_username() -> String {
     match &*DESKTOP_MANAGER.lock().unwrap() {
         Some(manager) => {
+            // seat0 (현재 세션)의 사용자 우선 반환
             if let Some(seat0_username) = manager.get_supported_display_seat0_username() {
                 seat0_username
             } else {
+                // seat0가 없으면 자식 프로세스의 사용자 반환
                 if manager.is_running() && !manager.child_username.is_empty() {
                     manager.child_username.clone()
                 } else {
@@ -199,14 +229,19 @@ impl Drop for DesktopManager {
     }
 }
 
+/// DesktopManager 구현
 impl DesktopManager {
+    /// 심각한 오류로 인한 프로세스 종료
     fn fatal_exit() {
         std::process::exit(0);
     }
 
+    /// 새로운 DesktopManager 생성
+    /// seat0(현재 활성 세션)의 정보 초기화
     pub fn new() -> Self {
         let mut seat0_username = "".to_owned();
         let mut seat0_display_server = "".to_owned();
+        // seat0의 세션 ID 및 디스플레이 서버 정보 조회
         let seat0_values = get_values_of_seat0(&[0, 2]);
         if !seat0_values[0].is_empty() {
             seat0_username = seat0_values[1].clone();
@@ -221,6 +256,8 @@ impl DesktopManager {
         }
     }
 
+    /// seat0의 지원 가능한 사용자명 조회
+    /// GDM 사용자이면서 Wayland인 경우는 지원 불가 (None 반환)
     fn get_supported_display_seat0_username(&self) -> Option<String> {
         if is_gdm_user(&self.seat0_username) && self.seat0_display_server == DISPLAY_SERVER_WAYLAND
         {
@@ -232,6 +269,7 @@ impl DesktopManager {
         }
     }
 
+    /// X 인증 파일 경로 조회
     #[inline]
     fn get_xauth() -> String {
         let xauth = get_env_var("XAUTHORITY");
@@ -242,6 +280,7 @@ impl DesktopManager {
         }
     }
 
+    /// 자식 프로세스(Xorg, WM) 실행 중 여부 확인
     #[inline]
     fn is_running(&self) -> bool {
         self.is_child_running.load(Ordering::SeqCst)
@@ -734,6 +773,8 @@ impl DesktopManager {
     }
 }
 
+/// PAM 서비스명 조회
+/// 앱 특화 PAM 설정이 있으면 그것을 사용, 없으면 gdm 사용
 fn pam_get_service_name() -> String {
     let app_name = crate::get_app_name().to_lowercase();
     if Path::new(&format!("/etc/pam.d/{app_name}")).is_file() {

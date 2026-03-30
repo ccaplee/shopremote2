@@ -6,73 +6,98 @@ use hbb_common::{
 };
 use std::{ffi::c_void, slice};
 
+/// 플랫폼별 화면 캡처 구현을 선택합니다.
 cfg_if! {
     if #[cfg(quartz)] {
+        /// macOS Quartz 구현
         mod quartz;
         pub use self::quartz::*;
     } else if #[cfg(x11)] {
         cfg_if! {
             if #[cfg(feature="wayland")] {
+                /// Linux 일반 구현
                 mod linux;
+                /// Wayland 구현
                 mod wayland;
+                /// X11 구현
                 mod x11;
                 pub use self::linux::*;
                 pub use self::wayland::set_map_err;
                 pub use self::x11::PixelBuffer;
             } else {
+                /// X11 구현
                 mod x11;
                 pub use self::x11::*;
             }
         }
     } else if #[cfg(dxgi)] {
+        /// Windows DXGI 구현
         mod dxgi;
         pub use self::dxgi::*;
     } else if #[cfg(target_os = "android")] {
+        /// Android 구현
         mod android;
         pub use self::android::*;
     }else {
-        //TODO: Fallback implementation.
+        // TODO: 폴백 구현
     }
 }
 
 pub mod codec;
 pub mod convert;
+/// 하드웨어 인코딩 지원
 #[cfg(feature = "hwcodec")]
 pub mod hwcodec;
+/// Android MediaCodec 지원
 #[cfg(feature = "mediacodec")]
 pub mod mediacodec;
 pub mod vpxcodec;
+/// VRAM 메모리 관리
 #[cfg(feature = "vram")]
 pub mod vram;
 pub use self::convert::*;
-pub const STRIDE_ALIGN: usize = 64; // commonly used in libvpx vpx_img_alloc caller
-pub const HW_STRIDE_ALIGN: usize = 0; // recommended by av_frame_get_buffer
+/// 버퍼 스트라이드 정렬 크기 (libvpx vpx_img_alloc에서 일반적으로 사용)
+pub const STRIDE_ALIGN: usize = 64;
+/// 하드웨어 버퍼 스트라이드 정렬 크기 (av_frame_get_buffer에서 권장)
+pub const HW_STRIDE_ALIGN: usize = 0;
 
 pub mod aom;
+/// 카메라 캡처 (iOS 제외)
 #[cfg(not(any(target_os = "ios")))]
 pub mod camera;
 pub mod record;
 mod vpx;
 
+/// 이미지 포맷 종류
 #[repr(usize)]
 #[derive(Debug, Copy, Clone)]
 pub enum ImageFormat {
+    /// 원본 포맷
     Raw,
+    /// ABGR 포맷
     ABGR,
+    /// ARGB 포맷
     ARGB,
 }
 
+/// RGB 이미지 데이터를 저장하는 구조체
 #[repr(C)]
 #[derive(Clone)]
 pub struct ImageRgb {
+    /// 이미지 데이터 (바이트 배열)
     pub raw: Vec<u8>,
+    /// 이미지 너비 (픽셀)
     pub w: usize,
+    /// 이미지 높이 (픽셀)
     pub h: usize,
+    /// 이미지 포맷
     pub fmt: ImageFormat,
+    /// 버퍼 정렬 크기
     pub align: usize,
 }
 
 impl ImageRgb {
+    /// 새로운 ImageRgb를 생성합니다.
     pub fn new(fmt: ImageFormat, align: usize) -> Self {
         Self {
             raw: Vec::new(),
@@ -83,16 +108,19 @@ impl ImageRgb {
         }
     }
 
+    /// 이미지 포맷을 반환합니다.
     #[inline]
     pub fn fmt(&self) -> ImageFormat {
         self.fmt
     }
 
+    /// 버퍼 정렬 크기를 반환합니다.
     #[inline]
     pub fn align(&self) -> usize {
         self.align
     }
 
+    /// 버퍼 정렬 크기를 설정합니다.
     #[inline]
     pub fn set_align(&mut self, align: usize) {
         self.align = align;

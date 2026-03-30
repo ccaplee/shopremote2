@@ -1,3 +1,6 @@
+/// 원격 터미널 서비스 - SSH/콘솔 접근 제공
+/// 사용자가 원격 호스트의 터미널을 제어할 수 있게 지원
+
 use super::*;
 use hbb_common::{
     anyhow::{anyhow, Context, Result},

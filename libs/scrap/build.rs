@@ -1,3 +1,6 @@
+// 빌드 스크립트 설정
+// 이 파일은 Cargo 빌드 프로세스 중 실행되는 빌드 스크립트입니다
+
 use std::{
     env, fs,
     path::{Path, PathBuf},

@@ -1,3 +1,6 @@
+/// Wayland 디스플레이 서버 지원 모듈
+/// Linux Wayland 환경에서 PipeWire를 사용한 화면 캡처 구현
+
 use super::*;
 use hbb_common::{allow_err, anyhow, platform::linux::DISTRO};
 use scrap::{
@@ -16,12 +19,17 @@ use crate::{
 };
 
 lazy_static::lazy_static! {
+    /// 캡처된 디스플레이 정보 맵 (디스플레이 인덱스 -> 타임스탬프)
     static ref CAP_DISPLAY_INFO: RwLock<HashMap<usize, u64>> = RwLock::new(HashMap::new());
+    /// PipeWire 초기화 상태
     static ref PIPEWIRE_INITIALIZED: RwLock<bool> = RwLock::new(false);
+    /// Scrap 라이브러리 오류 로그 횟수
     static ref LOG_SCRAP_COUNT: Mutex<u32> = Mutex::new(0);
+    /// 활성 디스플레이 개수
     static ref ACTIVE_DISPLAY_COUNT: RwLock<usize> = RwLock::new(0);
 }
 
+/// Wayland 모듈 초기화
 pub fn init() {
     set_map_err(map_err_scrap);
 }

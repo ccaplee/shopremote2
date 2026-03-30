@@ -15,6 +15,7 @@ use tao::{
 };
 use tiny_skia::{Color, FillRule, Paint, PathBuilder, PixmapMut, Stroke, Transform};
 
+/// Windows 플랫폼에서 화이트보드 이벤트 루프를 생성합니다.
 pub(super) fn create_event_loop() -> ResultType<()> {
     let face = match create_font_face() {
         Ok(face) => Some(face),

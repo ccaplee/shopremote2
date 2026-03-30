@@ -23,22 +23,26 @@ use crate::{
     ui_session_interface::{InvokeUiSession, Session},
 };
 
+// 비디오 출력 유형
 type Video = AssetPtr<video_destination>;
 
+// 전역 비디오 출력 인스턴스
 lazy_static::lazy_static! {
     static ref VIDEO: Arc<Mutex<Option<Video>>> = Default::default();
 }
 
-/// SciterHandler
-/// * element
-/// * close_state  for file path when close
+/// Sciter 기반 원격 세션 UI 핸들러
+/// 비디오 렌더링, 입력 처리, 파일 전송 등의 UI 이벤트 처리
 #[derive(Clone, Default)]
 pub struct SciterHandler {
+    // Sciter UI 루트 요소
     element: Arc<Mutex<Option<Element>>>,
+    // 세션 종료 시 저장할 상태 데이터 (파일 경로 등)
     close_state: HashMap<String, String>,
 }
 
 impl SciterHandler {
+    /// Sciter UI 함수 호출
     #[inline]
     fn call(&self, func: &str, args: &[Value]) {
         if let Some(ref e) = self.element.lock().unwrap().as_ref() {
@@ -46,6 +50,7 @@ impl SciterHandler {
         }
     }
 
+    /// Sciter UI 함수 호출 (크래시 워크어라운드 포함)
     #[inline]
     fn call2(&self, func: &str, args: &[Value]) {
         if let Some(ref e) = self.element.lock().unwrap().as_ref() {
@@ -53,6 +58,7 @@ impl SciterHandler {
         }
     }
 
+    /// 디스플레이 정보를 Sciter Value 배열로 변환
     fn make_displays_array(displays: &Vec<DisplayInfo>) -> Value {
         let mut displays_value = Value::array(0);
         for d in displays.iter() {
@@ -67,6 +73,7 @@ impl SciterHandler {
         displays_value
     }
 
+    /// 플랫폼 특화 정보를 JSON에서 Sciter Value로 변환
     fn make_platform_additions(data: &str) -> Option<Value> {
         if let Ok(v2) = serde_json::from_str::<HashMap<String, serde_json::Value>>(data) {
             let mut value = Value::map();

@@ -1,6 +1,8 @@
 use clipboard::ClipboardFile;
 use hbb_common::message_proto::*;
 
+/// ClipboardFile를 Message 프로토콜 형식으로 변환합니다
+/// 파일 클립보드 작업(알림, 포맷 목록, 데이터 요청/응답 등)을 RustDesk 프로토콜로 변환합니다
 pub fn clip_2_msg(clip: ClipboardFile) -> Message {
     match clip {
         ClipboardFile::NotifyCallback {
@@ -180,6 +182,8 @@ pub fn clip_2_msg(clip: ClipboardFile) -> Message {
     }
 }
 
+/// Message 프로토콜의 Cliprdr 메시지를 ClipboardFile로 변환합니다
+/// 프로토콜 메시지를 내부 클립보드 파일 작업으로 변환합니다
 pub fn msg_2_clip(msg: Cliprdr) -> Option<ClipboardFile> {
     match msg.union {
         Some(cliprdr::Union::Ready(_)) => Some(ClipboardFile::MonitorReady),
@@ -224,6 +228,7 @@ pub fn msg_2_clip(msg: Cliprdr) -> Option<ClipboardFile> {
     }
 }
 
+/// Unix 시스템에서 파일 클립보드 기능을 처리하는 모듈 (Linux/macOS)
 #[cfg(feature = "unix-file-copy-paste")]
 pub mod unix_file_clip {
     use super::*;
@@ -239,10 +244,12 @@ pub mod unix_file_clip {
     use hbb_common::log;
     use std::sync::{Arc, Mutex};
 
+    /// 클립보드 컨텍스트 캐시
     lazy_static::lazy_static! {
         static ref CLIPBOARD_CTX: Arc<Mutex<Option<crate::clipboard::ClipboardContext>>> = Arc::new(Mutex::new(None));
     }
 
+    /// 파일 디스크립터와 파일 콘텐츠 포맷 목록을 생성합니다
     pub fn get_format_list() -> ClipboardFile {
         let fd_format_name = get_local_format(FILEDESCRIPTOR_FORMAT_ID)
             .unwrap_or(FILEDESCRIPTORW_FORMAT_NAME.to_string());
@@ -256,6 +263,7 @@ pub mod unix_file_clip {
         }
     }
 
+    /// 포맷 데이터 응답 실패 메시지를 생성합니다
     #[inline]
     fn msg_resp_format_data_failure() -> Message {
         clip_2_msg(ClipboardFile::FormatDataResponse {
@@ -264,6 +272,7 @@ pub mod unix_file_clip {
         })
     }
 
+    /// 파일 콘텐츠 응답 실패 메시지를 생성합니다
     #[inline]
     fn resp_file_contents_fail(stream_id: i32) -> Message {
         clip_2_msg(ClipboardFile::FileContentsResponse {
@@ -273,6 +282,8 @@ pub mod unix_file_clip {
         })
     }
 
+    /// 클라이언트에서 받은 클립보드 메시지를 처리하고 응답 메시지를 생성합니다
+    /// 포맷 목록, 포맷 데이터, 파일 콘텐츠 요청/응답 등을 처리합니다
     pub fn serve_clip_messages(
         side: ClipboardSide,
         clip: ClipboardFile,

@@ -1,3 +1,6 @@
+/// 포터블 서비스 모듈 - 독립 프로세스로 비디오 캡처를 수행
+/// Windows 가상 디스플레이 지원을 위한 독립 서비스 구현
+
 use core::slice;
 use hbb_common::{
     allow_err,
@@ -31,22 +34,34 @@ use crate::{
 
 use super::video_qos;
 
+/// 카운터 크기 (int32 * 2)
 const SIZE_COUNTER: usize = size_of::<i32>() * 2;
+/// 프레임 메모리 정렬 단위 (64바이트)
 const FRAME_ALIGN: usize = 64;
 
+/// 커서 정보 주소 오프셋
 const ADDR_CURSOR_PARA: usize = 0;
+/// 커서 카운터 주소 오프셋
 const ADDR_CURSOR_COUNTER: usize = ADDR_CURSOR_PARA + size_of::<CURSORINFO>();
 
+/// 캡처러 파라미터 주소 오프셋
 const ADDR_CAPTURER_PARA: usize = ADDR_CURSOR_COUNTER + SIZE_COUNTER;
+/// 캡처 프레임 정보 주소 오프셋
 const ADDR_CAPTURE_FRAME_INFO: usize = ADDR_CAPTURER_PARA + size_of::<CapturerPara>();
+/// 캡처 WouldBlock 상태 주소 오프셋
 const ADDR_CAPTURE_WOULDBLOCK: usize = ADDR_CAPTURE_FRAME_INFO + size_of::<FrameInfo>();
+/// 캡처 프레임 카운터 주소 오프셋
 const ADDR_CAPTURE_FRAME_COUNTER: usize = ADDR_CAPTURE_WOULDBLOCK + size_of::<i32>();
 
+/// 캡처 프레임 데이터 시작 주소 (64바이트 정렬)
 const ADDR_CAPTURE_FRAME: usize =
     (ADDR_CAPTURE_FRAME_COUNTER + SIZE_COUNTER + FRAME_ALIGN - 1) / FRAME_ALIGN * FRAME_ALIGN;
 
+/// IPC 통신 서피스 접미사
 const IPC_SUFFIX: &str = "_portable_service";
+/// 공유 메모리 이름
 pub const SHMEM_NAME: &str = "_portable_service";
+/// 최대 NACK (부정 응답) 횟수
 const MAX_NACK: usize = 3;
 const MAX_DXGI_FAIL_TIME: usize = 5;
 

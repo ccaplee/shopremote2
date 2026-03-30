@@ -1,6 +1,7 @@
-// https://developer.apple.com/documentation/appkit/nscursor
-// https://github.com/servo/core-foundation-rs
-// https://github.com/rust-windowing/winit
+// macOS 플랫폼 구현
+// 참고: https://developer.apple.com/documentation/appkit/nscursor
+//      https://github.com/servo/core-foundation-rs
+//      https://github.com/rust-windowing/winit
 
 use super::{CursorData, ResultType};
 use cocoa::{
@@ -35,40 +36,56 @@ use std::{
     sync::Mutex,
 };
 
-// macOS boolean_t is defined as `int` in <mach/boolean.h>
+// macOS boolean_t는 <mach/boolean.h>에서 `int`로 정의됨
 type BooleanT = hbb_common::libc::c_int;
 
+// 권한 스크립트 디렉토리 포함
 static PRIVILEGES_SCRIPTS_DIR: Dir =
     include_dir!("$CARGO_MANIFEST_DIR/src/platform/privileges_scripts");
+// 마지막 커서 시드값 (커서 변경 감지용)
 static mut LATEST_SEED: i32 = 0;
 
+/// 업데이트 임시 디렉토리 경로 조회
 #[inline]
 fn get_update_temp_dir() -> PathBuf {
     let euid = unsafe { hbb_common::libc::geteuid() };
     Path::new("/tmp").join(format!(".rustdeskupdate-{}", euid))
 }
 
+/// 업데이트 임시 디렉토리 경로 문자열로 조회
 #[inline]
 fn get_update_temp_dir_string() -> String {
     get_update_temp_dir().to_string_lossy().into_owned()
 }
 
-/// Global mutex to serialize CoreGraphics cursor operations.
-/// This prevents race conditions between cursor visibility (hide depth tracking)
-/// and cursor positioning/clipping operations.
+/// CoreGraphics 커서 연산 직렬화 뮤텍스
+/// 커서 가시성(숨김 깊이 추적)과 커서 위치/클리핑 연산 간의
+/// 경합 상태를 방지
 static CG_CURSOR_MUTEX: Mutex<()> = Mutex::new(());
 
+/// macOS 네이티브 C 함수 정의
 extern "C" {
+    /// 현재 커서 시드값 조회 (커서 변경 감지)
     fn CGSCurrentCursorSeed() -> i32;
+    /// CoreGraphics 이벤트 생성
     fn CGEventCreate(r: *const c_void) -> *const c_void;
+    /// CoreGraphics 이벤트의 위치 조회
     fn CGEventGetLocation(e: *const c_void) -> CGPoint;
+    /// Accessibility 신뢰 확인 프롬프트 옵션
     static kAXTrustedCheckOptionPrompt: CFStringRef;
+    /// Accessibility API 신뢰 여부 확인
     fn AXIsProcessTrustedWithOptions(options: CFDictionaryRef) -> BOOL;
+    /// 입력 모니터링 권한 상태
     fn InputMonitoringAuthStatus(_: BOOL) -> BOOL;
+    /// 화면 녹화 권한 여부 확인
     fn IsCanScreenRecording(_: BOOL) -> BOOL;
+    /// 새로운 화면 캡처 확인 API 사용 가능 여부
     fn CanUseNewApiForScreenCaptureCheck() -> BOOL;
+    /// 관리자 권한 확인
     fn MacCheckAdminAuthorization() -> BOOL;
+    /// macOS 디스플레이의 해상도 모드 개수 조회
     fn MacGetModeNum(display: u32, numModes: *mut u32) -> BOOL;
+    /// macOS 디스플레이의 모든 해상도 모드 조회
     fn MacGetModes(
         display: u32,
         widths: *mut u32,
@@ -77,21 +94,30 @@ extern "C" {
         max: u32,
         numModes: *mut u32,
     ) -> BOOL;
+    /// macOS 버전(major) 조회
     fn majorVersion() -> u32;
+    /// macOS 디스플레이의 현재 해상도 조회
     fn MacGetMode(display: u32, width: *mut u32, height: *mut u32) -> BOOL;
+    /// macOS 디스플레이 해상도 설정
     fn MacSetMode(display: u32, width: u32, height: u32, tryHiDPI: bool) -> BOOL;
+    /// 마우스 커서 위치 설정
     fn CGWarpMouseCursorPosition(newCursorPosition: CGPoint) -> CGError;
+    /// 마우스 및 커서 위치 연동 설정
     fn CGAssociateMouseAndMouseCursorPosition(connected: BooleanT) -> CGError;
 }
 
+/// macOS 버전(major) 조회
 pub fn major_version() -> u32 {
     unsafe { majorVersion() }
 }
 
+/// Accessibility API 신뢰 여부 확인
+/// prompt: true이면 사용자에게 권한 요청 대화상자 표시
 pub fn is_process_trusted(prompt: bool) -> bool {
     autoreleasepool(|| unsafe_is_process_trusted(prompt))
 }
 
+/// Accessibility 신뢰 여부 확인 (unsafe 버전)
 fn unsafe_is_process_trusted(prompt: bool) -> bool {
     unsafe {
         let value = if prompt { YES } else { NO };
@@ -105,6 +131,8 @@ fn unsafe_is_process_trusted(prompt: bool) -> bool {
     }
 }
 
+/// 입력 모니터링 권한 있는지 확인
+/// prompt: true이면 사용자에게 권한 요청 대화상자 표시
 pub fn is_can_input_monitoring(prompt: bool) -> bool {
     unsafe {
         let value = if prompt { YES } else { NO };
@@ -112,6 +140,8 @@ pub fn is_can_input_monitoring(prompt: bool) -> bool {
     }
 }
 
+/// 화면 녹화 권한 있는지 확인
+/// prompt: true이면 사용자에게 권한 요청 대화상자 표시
 pub fn is_can_screen_recording(prompt: bool) -> bool {
     autoreleasepool(|| unsafe_is_can_screen_recording(prompt))
 }

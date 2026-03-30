@@ -1,5 +1,6 @@
-// 1. Check update.
-// 2. Install or uninstall.
+// 플러그인 매니저의 역할:
+// 1. 플러그인 업데이트 확인
+// 2. 플러그인 설치 또는 언로드
 
 use super::{desc::Meta as PluginMeta, ipc::InstallStatus, *};
 use crate::flutter;
@@ -14,12 +15,17 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+/// UI로 전송할 플러그인 목록 메시지 타입
 const MSG_TO_UI_PLUGIN_MANAGER_LIST: &str = "plugin_list";
+/// UI로 전송할 플러그인 설치 메시지 타입
 const MSG_TO_UI_PLUGIN_MANAGER_INSTALL: &str = "plugin_install";
+/// UI로 전송할 플러그인 언로드 메시지 타입
 const MSG_TO_UI_PLUGIN_MANAGER_UNINSTALL: &str = "plugin_uninstall";
 
+/// IPC 플러그인 채널 접미사
 const IPC_PLUGIN_POSTFIX: &str = "_plugin";
 
+/// 현재 플랫폼에 대한 플러그인 플랫폼 타입
 #[cfg(target_os = "windows")]
 const PLUGIN_PLATFORM: &str = "windows";
 #[cfg(target_os = "linux")]
@@ -28,35 +34,52 @@ const PLUGIN_PLATFORM: &str = "linux";
 const PLUGIN_PLATFORM: &str = "macos";
 
 lazy_static::lazy_static! {
+    /// 플러그인 정보를 캐시하는 전역 맵
     static ref PLUGIN_INFO: Arc<Mutex<HashMap<String, PluginInfo>>> = Arc::new(Mutex::new(HashMap::new()));
 }
 
+/// 플러그인 매니저의 메타정보 (모든 플러그인 목록)
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ManagerMeta {
+    /// 플러그인 목록의 버전
     pub version: String,
+    /// 플러그인 목록의 설명
     pub description: String,
+    /// 사용 가능한 플러그인들
     pub plugins: Vec<PluginMeta>,
 }
 
+/// 플러그인 소스 정보 (플러그인을 제공하는 서버)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PluginSource {
+    /// 플러그인 소스의 이름
     pub name: String,
+    /// 플러그인 소스의 URL
     pub url: String,
+    /// 플러그인 소스의 설명
     pub description: String,
 }
 
+/// 플러그인의 전체 정보 (메타정보 + 소스 + 설치 상태)
 #[derive(Debug, Serialize)]
 pub struct PluginInfo {
+    /// 플러그인의 출처
     pub source: PluginSource,
+    /// 플러그인의 메타정보
     pub meta: PluginMeta,
+    /// 설치된 플러그인의 버전 (비어있으면 미설치)
     pub installed_version: String,
+    /// 플러그인이 유효하지 않은 이유 (비어있으면 유효)
     pub invalid_reason: String,
 }
 
+/// 로컬 플러그인 소스 상수
 static PLUGIN_SOURCE_LOCAL: &str = "local";
 
+/// 플러그인 소스 목록을 반환합니다
+/// 현재는 하나의 소스만 지원합니다
 fn get_plugin_source_list() -> Vec<PluginSource> {
-    // Only one source for now.
+    // 현재는 소스가 하나뿐입니다.
     // vec![PluginSource {
     //     name: "rustdesk".to_string(),
     //     url: "https://raw.githubusercontent.com/fufesou/rustdesk-plugins/main".to_string(),
@@ -65,9 +88,11 @@ fn get_plugin_source_list() -> Vec<PluginSource> {
     vec![]
 }
 
+/// 플러그인 소스에서 플러그인 목록을 가져옵니다
 fn get_source_plugins() -> HashMap<String, PluginInfo> {
     let mut plugins = HashMap::new();
     for source in get_plugin_source_list().into_iter() {
+        // 메타 파일 URL 구성
         let url = format!("{}/meta.toml", source.url);
         match create_http_client().get(&url).send() {
             Ok(resp) => {
@@ -79,9 +104,11 @@ fn get_source_plugins() -> HashMap<String, PluginInfo> {
                     );
                 }
                 if let Ok(text) = resp.text() {
+                    // TOML 파싱
                     match toml::from_str::<ManagerMeta>(&text) {
                         Ok(manager_meta) => {
                             for meta in manager_meta.plugins.iter() {
+                                // 현재 플랫폼이 지원되는지 확인
                                 if !meta
                                     .platforms
                                     .to_uppercase()
@@ -110,8 +137,10 @@ fn get_source_plugins() -> HashMap<String, PluginInfo> {
     plugins
 }
 
+/// 플러그인 목록을 UI로 전송합니다
 fn send_plugin_list_event(plugins: &HashMap<String, PluginInfo>) {
     let mut plugin_list = plugins.values().collect::<Vec<_>>();
+    // 플러그인 이름 순서로 정렬
     plugin_list.sort_by(|a, b| a.meta.name.cmp(&b.meta.name));
     if let Ok(plugin_list) = serde_json::to_string(&plugin_list) {
         let mut m = HashMap::new();
@@ -123,24 +152,29 @@ fn send_plugin_list_event(plugins: &HashMap<String, PluginInfo>) {
     }
 }
 
+/// 플러그인 목록을 로드하고 UI에 전송합니다
 pub fn load_plugin_list() {
     let mut plugin_info_lock = PLUGIN_INFO.lock().unwrap();
+    // 소스 플러그인 목록 가져오기
     let mut plugins = get_source_plugins();
 
-    // A big read lock is needed to prevent race conditions.
-    // Loading plugin list may be slow.
-    // Users may call uninstall plugin in the middle.
+    // 경합 조건을 방지하기 위해 큰 읽기 잠금이 필요합니다.
+    // 플러그인 목록 로딩은 느릴 수 있습니다.
+    // 사용자가 이 중에 플러그인을 언로드할 수 있습니다.
     let plugin_infos = super::plugins::get_plugin_infos();
     let plugin_infos_read_lock = plugin_infos.read().unwrap();
     for (id, info) in plugin_infos_read_lock.iter() {
+        // 언로드되도록 표시된 플러그인은 스킵
         if info.uninstalled {
             continue;
         }
 
         if let Some(p) = plugins.get_mut(id) {
+            // 소스에서 가져온 플러그인의 설치 버전 업데이트
             p.installed_version = info.desc.meta().version.clone();
             p.invalid_reason = "".to_string();
         } else {
+            // 로컬에만 있는 플러그인 추가
             plugins.insert(
                 id.to_string(),
                 PluginInfo {
@@ -156,17 +190,19 @@ pub fn load_plugin_list() {
             );
         }
     }
+    // UI에 플러그인 목록 전송
     send_plugin_list_event(&plugins);
     *plugin_info_lock = plugins;
 }
 
+/// Windows에서 플러그인 설치를 위해 권한 상승을 수행합니다
 #[cfg(target_os = "windows")]
 fn elevate_install(
     plugin_id: &str,
     plugin_url: &str,
     same_plugin_exists: bool,
 ) -> ResultType<bool> {
-    // to-do: Support args with space in quotes. 'arg 1' and "arg 2"
+    // TODO: 인용부호 안의 공백이 있는 인자를 지원합니다. 'arg 1', "arg 2"
     let args = if same_plugin_exists {
         format!("--plugin-install {}", plugin_id)
     } else {
@@ -175,6 +211,7 @@ fn elevate_install(
     crate::platform::elevate(&args)
 }
 
+/// Linux에서 플러그인 설치를 위해 권한 상승을 수행합니다
 #[cfg(target_os = "linux")]
 fn elevate_install(
     plugin_id: &str,
@@ -188,6 +225,7 @@ fn elevate_install(
     crate::platform::elevate(args)
 }
 
+/// macOS에서 플러그인 설치를 위해 권한 상승을 수행합니다
 #[cfg(target_os = "macos")]
 fn elevate_install(
     plugin_id: &str,
@@ -201,18 +239,21 @@ fn elevate_install(
     crate::platform::elevate(args, "RustDesk wants to install then plugin")
 }
 
+/// Windows에서 플러그인 언로드를 위해 권한 상승을 수행합니다
 #[inline]
 #[cfg(target_os = "windows")]
 fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
     crate::platform::elevate(&format!("--plugin-uninstall {}", plugin_id))
 }
 
+/// Linux에서 플러그인 언로드를 위해 권한 상승을 수행합니다
 #[inline]
 #[cfg(target_os = "linux")]
 fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
     crate::platform::elevate(vec!["--plugin-uninstall", plugin_id])
 }
 
+/// macOS에서 플러그인 언로드를 위해 권한 상승을 수행합니다
 #[inline]
 #[cfg(target_os = "macos")]
 fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
@@ -222,6 +263,7 @@ fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
     )
 }
 
+/// 플러그인을 설치합니다
 pub fn install_plugin(id: &str) -> ResultType<()> {
     match PLUGIN_INFO.lock().unwrap().get(id) {
         Some(plugin) => {
@@ -254,6 +296,7 @@ pub fn install_plugin(id: &str) -> ResultType<()> {
     }
 }
 
+/// 언로드되도록 표시된 플러그인 목록을 가져옵니다
 fn get_uninstalled_plugins(uninstalled_plugin_set: &HashSet<String>) -> ResultType<Vec<String>> {
     let plugins_dir = super::get_plugins_dir()?;
     let mut plugins = Vec::new();
@@ -264,6 +307,7 @@ fn get_uninstalled_plugins(uninstalled_plugin_set: &HashSet<String>) -> ResultTy
                     let plugin_dir = entry.path();
                     if plugin_dir.is_dir() {
                         if let Some(id) = plugin_dir.file_name().and_then(|n| n.to_str()) {
+                            // 언로드 목록에 포함되어 있는지 확인
                             if uninstalled_plugin_set.contains(id) {
                                 plugins.push(id.to_string());
                             }
@@ -279,12 +323,16 @@ fn get_uninstalled_plugins(uninstalled_plugin_set: &HashSet<String>) -> ResultTy
     Ok(plugins)
 }
 
+/// 언로드된 플러그인들을 실제로 제거합니다
 pub fn remove_uninstalled() -> ResultType<()> {
     let mut uninstalled_plugin_set = get_uninstall_id_set()?;
     for id in get_uninstalled_plugins(&uninstalled_plugin_set)?.iter() {
+        // 플러그인 설정 제거
         super::config::remove(id as _);
+        // 플러그인 디렉토리 제거
         if let Ok(dir) = super::get_plugin_dir(id as _) {
             allow_err!(remove_dir_all(dir.clone()));
+            // 디렉토리가 실제로 제거되었으면 언로드 목록에서 제거
             if !dir.exists() {
                 uninstalled_plugin_set.remove(id);
             }
@@ -294,6 +342,7 @@ pub fn remove_uninstalled() -> ResultType<()> {
     Ok(())
 }
 
+/// 플러그인을 언로드합니다
 pub fn uninstall_plugin(id: &str, called_by_ui: bool) {
     if called_by_ui {
         match elevate_uninstall(id) {
@@ -328,6 +377,7 @@ pub fn uninstall_plugin(id: &str, called_by_ui: bool) {
     }
 }
 
+/// 플러그인 이벤트를 UI로 푸시합니다
 fn push_event(id: &str, r#type: &str, msg: &str) {
     let mut m = HashMap::new();
     m.insert("name", MSG_TO_UI_TYPE_PLUGIN_MANAGER);
@@ -338,16 +388,19 @@ fn push_event(id: &str, r#type: &str, msg: &str) {
     }
 }
 
+/// 플러그인 언로드 이벤트를 UI로 푸시합니다
 #[inline]
 fn push_uninstall_event(id: &str, msg: &str) {
     push_event(id, MSG_TO_UI_PLUGIN_MANAGER_UNINSTALL, msg);
 }
 
+/// 플러그인 설치 이벤트를 UI로 푸시합니다
 #[inline]
 fn push_install_event(id: &str, msg: &str) {
     push_event(id, MSG_TO_UI_PLUGIN_MANAGER_INSTALL, msg);
 }
 
+/// IPC 연결을 처리합니다
 async fn handle_conn(mut stream: crate::ipc::Connection) {
     loop {
         tokio::select! {
@@ -362,24 +415,30 @@ async fn handle_conn(mut stream: crate::ipc::Connection) {
                             crate::ipc::Data::Plugin(super::ipc::Plugin::InstallStatus((id, status))) => {
                                 match status {
                                     InstallStatus::Downloading(n) => {
+                                        // 다운로드 진행률 전송
                                         push_install_event(&id, &format!("downloading-{}", n));
                                     },
                                     InstallStatus::Installing => {
+                                        // 설치 중 상태 전송
                                         push_install_event(&id, "installing");
                                     }
                                     InstallStatus::Finished => {
+                                        // 플러그인 로드 및 UI 업데이트
                                         allow_err!(super::plugins::load_plugin(&id));
                                         allow_err!(super::ipc::load_plugin_async(id).await);
                                         std::thread::spawn(load_plugin_list);
                                         push_install_event(&id, "finished");
                                     }
                                     InstallStatus::FailedCreating => {
+                                        // 파일 생성 실패
                                         push_install_event(&id, "failed-creating");
                                     }
                                     InstallStatus::FailedDownloading => {
+                                        // 다운로드 실패
                                         push_install_event(&id, "failed-downloading");
                                     }
                                     InstallStatus::FailedInstalling => {
+                                        // 설치 실패
                                         push_install_event(&id, "failed-installing");
                                     }
                                 }
@@ -418,6 +477,7 @@ pub async fn start_ipc() {
     }
 }
 
+/// 언로드 목록 파일에서 언로드된 플러그인 ID 세트를 가져옵니다
 pub(super) fn get_uninstall_id_set() -> ResultType<HashSet<String>> {
     let uninstall_file_path = super::get_uninstall_file_path()?;
     if !uninstall_file_path.exists() {
@@ -428,6 +488,7 @@ pub(super) fn get_uninstall_id_set() -> ResultType<HashSet<String>> {
     Ok(serde_json::from_str::<HashSet<String>>(&s)?)
 }
 
+/// 언로드 목록을 파일에 저장합니다
 fn update_uninstall_id_set(set: HashSet<String>) -> ResultType<()> {
     let content = serde_json::to_string(&set)?;
     let file = OpenOptions::new()
@@ -440,7 +501,7 @@ fn update_uninstall_id_set(set: HashSet<String>) -> ResultType<()> {
     Ok(())
 }
 
-// install process
+// 플러그인 설치 프로세스 관련 모듈
 pub(super) mod install {
     use super::IPC_PLUGIN_POSTFIX;
     use crate::hbbs_http::create_http_client;
@@ -456,11 +517,13 @@ pub(super) mod install {
     };
     use zip::ZipArchive;
 
+    /// 설치 상태를 IPC로 전송합니다
     #[tokio::main(flavor = "current_thread")]
     async fn send_install_status(id: &str, status: InstallStatus) {
         allow_err!(_send_install_status(id, status).await);
     }
 
+    /// 실제로 설치 상태를 IPC로 전송합니다
     async fn _send_install_status(id: &str, status: InstallStatus) -> ResultType<()> {
         let mut c = connect(1_000, IPC_PLUGIN_POSTFIX).await?;
         c.send(&Data::Plugin(Plugin::InstallStatus((
@@ -471,6 +534,7 @@ pub(super) mod install {
         Ok(())
     }
 
+    /// HTTP에서 파일로 다운로드합니다
     fn download_to_file(url: &str, file: File) -> ResultType<()> {
         let resp = match create_http_client().get(url).send() {
             Ok(resp) => resp,
@@ -488,6 +552,7 @@ pub(super) mod install {
         Ok(())
     }
 
+    /// 플러그인 파일을 다운로드합니다
     fn download_file(id: &str, url: &str, filename: &Path) -> bool {
         let file = match File::create(filename) {
             Ok(f) => f,
@@ -505,14 +570,17 @@ pub(super) mod install {
         true
     }
 
+    /// ZIP 파일에서 플러그인을 추출합니다
     fn do_install_file(filename: &Path, target_dir: &Path) -> ResultType<()> {
         let mut zip = ZipArchive::new(BufReader::new(File::open(filename)?))?;
         for i in 0..zip.len() {
             let mut file = zip.by_index(i)?;
             let file_path = target_dir.join(file.name());
             if file.name().ends_with("/") {
+                // 디렉토리 생성
                 std::fs::create_dir_all(&file_path)?;
             } else {
+                // 파일 추출
                 if let Some(p) = file_path.parent() {
                     if !p.exists() {
                         std::fs::create_dir_all(&p)?;
@@ -525,6 +593,7 @@ pub(super) mod install {
         Ok(())
     }
 
+    /// 플러그인을 언로드 목록에서 추가 또는 제거합니다
     pub fn change_uninstall_plugin(id: &str, add: bool) {
         match super::get_uninstall_id_set() {
             Ok(mut set) => {
@@ -544,6 +613,7 @@ pub(super) mod install {
         }
     }
 
+    /// URL에서 플러그인을 다운로드하고 설치합니다
     pub fn install_plugin_with_url(id: &str, url: &str) {
         log::info!("Installing plugin '{}', url: {}", id, url);
         let plugin_dir = match super::super::get_plugin_dir(id) {

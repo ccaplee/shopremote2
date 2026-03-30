@@ -53,6 +53,8 @@ use std::{
     },
 };
 
+/// 원격 클라이언트 세션을 관리하는 핵심 구조체
+/// 비디오, 오디오, 파일 전송, 클립보드 등 모든 통신을 처리
 pub struct Remote<T: InvokeUiSession> {
     handler: Session<T>,
     audio_sender: MediaSender,
@@ -452,7 +454,7 @@ impl<T: InvokeUiSession> Remote<T> {
         // iOS does not have this server.
         #[cfg(not(any(target_os = "ios")))]
         {
-            // NOTE:
+            // 주의:
             // The client server and --server both use the same sound input device.
             // It's better to distinguish the server side and client side.
             // But it' not necessary for now, because it's not a common case.

@@ -25,7 +25,7 @@ pub mod remote;
 type Status = (i32, bool, i64, String);
 
 lazy_static::lazy_static! {
-    // stupid workaround for https://sciter.com/forums/topic/crash-on-latest-tis-mac-sdk-sometimes/
+    // https://sciter.com/forums/topic/crash-on-latest-tis-mac-sdk-sometimes/ 우회
     static ref STUPID_VALUES: Mutex<Vec<Arc<Vec<Value>>>> = Default::default();
 }
 
@@ -60,12 +60,12 @@ pub fn start(args: &mut [String]) {
         sciter::set_library(&so_path).ok();
     }
     #[cfg(windows)]
-    // Check if there is a sciter.dll nearby.
+    // 근처에 sciter.dll이 있는지 확인합니다.
     if let Ok(exe) = std::env::current_exe() {
         if let Some(parent) = exe.parent() {
             let sciter_dll_path = parent.join("sciter.dll");
             if sciter_dll_path.exists() {
-                // Try to set the sciter dll.
+                // sciter dll을 설정하려고 시도합니다.
                 let p = sciter_dll_path.to_string_lossy().to_string();
                 log::debug!("Found dll:{}, \n {:?}", p, sciter::set_library(&p));
             }
@@ -106,7 +106,7 @@ pub fn start(args: &mut [String]) {
         frame.event_handler(UI {});
         frame.sciter_handler(UIHostHandler {});
         page = "index.html";
-        // Start pulse audio local server.
+        // 펄스 오디오 로컬 서버를 시작합니다.
         #[cfg(target_os = "linux")]
         std::thread::spawn(crate::ipc::start_pa);
     } else if args[0] == "--install" {
@@ -185,7 +185,7 @@ pub fn start(args: &mut [String]) {
     ));
     let hide_cm = *cm::HIDE_CM.lock().unwrap();
     if !args.is_empty() && args[0] == "--cm" && hide_cm {
-        // run_app calls expand(show) + run_loop, we use collapse(hide) + run_loop instead to create a hidden window
+        // run_app은 expand(show) + run_loop를 호출합니다. 숨겨진 창을 만들기 위해 collapse(hide) + run_loop를 대신 사용합니다
         frame.collapse(true);
         frame.run_loop();
         return;
@@ -457,7 +457,7 @@ impl UI {
     }
 
     fn get_recent_sessions(&mut self) -> Value {
-        // to-do: limit number of recent sessions, and remove old peer file
+        // 할 일: 최근 세션 수를 제한하고 이전 피어 파일을 제거합니다
         let peers: Vec<Value> = PeerConfig::peers(None)
             .drain(..)
             .map(|p| Self::get_peer_value(p.0, p.2))
@@ -846,7 +846,7 @@ fn get_sound_inputs() -> Vec<String> {
         .collect()
 }
 
-// sacrifice some memory
+// 일부 메모리를 희생합니다
 pub fn value_crash_workaround(values: &[Value]) -> Arc<Vec<Value>> {
     let persist = Arc::new(values.to_vec());
     STUPID_VALUES.lock().unwrap().push(persist.clone());

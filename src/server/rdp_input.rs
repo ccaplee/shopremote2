@@ -1,3 +1,6 @@
+/// RDP (원격 데스크톱 프로토콜) 입력 처리 모듈
+/// Windows RDP 세션의 입력 이벤트를 처리
+
 use super::input_service::set_clipboard_for_paste_sync;
 use crate::uinput::service::{can_input_via_keysym, char_to_keysym, map_key};
 use dbus::{blocking::SyncConnection, Path};

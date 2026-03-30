@@ -1,3 +1,6 @@
+/// 클라이언트-서버 연결을 관리하는 핵심 모듈
+/// 네트워크 통신, 메시지 처리, 상태 관리 등을 담당
+
 use super::{input_service::*, *};
 #[cfg(feature = "unix-file-copy-paste")]
 use crate::clipboard::try_empty_clipboard_files;

@@ -19,6 +19,9 @@
 //! - Named pipe creation and connection
 //! - User token and SID handling
 //! - Helper process launching
+/// 터미널 서비스 헬퍼 모듈
+/// 터미널 연결, 셸 명령 실행 등의 유틸리티 함수 제공
+
 
 use hbb_common::{
     anyhow::{anyhow, Context, Result},

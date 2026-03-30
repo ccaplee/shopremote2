@@ -12,25 +12,34 @@ use std::{
     time::Duration,
 };
 
+/// Linux에서 클립보드 파일 붙여넣기를 위해 FUSE를 사용합니다.
+/// FUSE는 사용자 영역 파일 시스템을 구현하여 원격 파일을 로컬에서 액세스 가능하게 합니다.
+
 lazy_static::lazy_static! {
+    /// 클라이언트용 FUSE 마운트 포인트
     static ref FUSE_MOUNT_POINT_CLIENT: Arc<String> = {
         let mnt_path = format!("/tmp/{}/{}", APP_NAME.read().unwrap(), "cliprdr-client");
-        // No need to run `canonicalize()` here.
+        // canonicalize()를 실행할 필요가 없습니다.
         Arc::new(mnt_path)
     };
 
+    /// 서버용 FUSE 마운트 포인트
     static ref FUSE_MOUNT_POINT_SERVER: Arc<String> = {
         let mnt_path = format!("/tmp/{}/{}", APP_NAME.read().unwrap(), "cliprdr-server");
-        // No need to run `canonicalize()` here.
+        // canonicalize()를 실행할 필요가 없습니다.
         Arc::new(mnt_path)
     };
 
+    /// 클라이언트용 FUSE 컨텍스트
     static ref FUSE_CONTEXT_CLIENT: Arc<Mutex<Option<FuseContext>>> = Arc::new(Mutex::new(None));
+    /// 서버용 FUSE 컨텍스트
     static ref FUSE_CONTEXT_SERVER: Arc<Mutex<Option<FuseContext>>> = Arc::new(Mutex::new(None));
 }
 
+/// FUSE 요청 타임아웃 (3초)
 static FUSE_TIMEOUT: Duration = Duration::from_secs(3);
 
+/// 파일 시스템 모니터링에서 제외할 경로를 가져옵니다.
 pub fn get_exclude_paths(is_client: bool) -> Arc<String> {
     if is_client {
         FUSE_MOUNT_POINT_CLIENT.clone()
@@ -39,6 +48,7 @@ pub fn get_exclude_paths(is_client: bool) -> Arc<String> {
     }
 }
 
+/// FUSE 컨텍스트가 초기화되었는지 확인합니다.
 pub fn is_fuse_context_inited(is_client: bool) -> bool {
     if is_client {
         FUSE_CONTEXT_CLIENT.lock().is_some()
@@ -47,6 +57,8 @@ pub fn is_fuse_context_inited(is_client: bool) -> bool {
     }
 }
 
+/// FUSE 컨텍스트를 초기화합니다.
+/// 마운트 포인트를 준비하고 FUSE 파일 시스템을 마운트합니다.
 pub fn init_fuse_context(is_client: bool) -> Result<(), CliprdrError> {
     let mut fuse_context_lock = if is_client {
         FUSE_CONTEXT_CLIENT.lock()

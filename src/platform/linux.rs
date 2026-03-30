@@ -26,21 +26,28 @@ use std::{
 use terminfo::{capability as cap, Database};
 use wallpaper;
 
+// Linux 포터블 오디오 샘플 레이트 (48kHz)
 pub const PA_SAMPLE_RATE: u32 = 48000;
+// 원본 키맵 상태 여부 (키맵 수정 추적용)
 static mut UNMODIFIED: bool = true;
 
+// 무효한 TERM 값들 (무시해야 함)
 const INVALID_TERM_VALUES: [&str; 3] = ["", "unknown", "dumb"];
+// 셸 프로세스 이름 목록
 const SHELL_PROCESSES: [&str; 4] = ["bash", "zsh", "fish", "sh"];
 
-// Terminal type constants
+/// 터미널 타입 상수
 const TERM_XTERM_256COLOR: &str = "xterm-256color";
 const TERM_SCREEN_256COLOR: &str = "screen-256color";
 const TERM_XTERM: &str = "xterm";
 
+/// 전역 static 변수들 (lazy 초기화 사용)
 lazy_static::lazy_static! {
+    /// X11 사용 가능 여부 또는 headless 모드 판별
     pub static ref IS_X11: bool = hbb_common::platform::linux::is_x11_or_headless();
-    // Cache for TERM value - once TERM_XTERM_256COLOR is found, reuse it directly
+    /// TERM 값 캐시 (TERM_XTERM_256COLOR 찾으면 재사용)
     static ref CACHED_TERM: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+    /// xterm-256color 터미널 데이터베이스
     static ref DATABASE_XTERM_256COLOR: Option<Database> = {
         match Database::from_name(TERM_XTERM_256COLOR) {
             Ok(database) => Some(database),
@@ -50,16 +57,16 @@ lazy_static::lazy_static! {
             }
         }
     };
-    // https://github.com/rustdesk/rustdesk/issues/13705
-    // Check if `sudo -E` actually preserves environment.
-    //
-    // This flag is only used by `run_as_user()` (root service -> user session). If the current process is not
-    // running as `root`, this check is meaningless (and `sudo -n` may fail), so we return `false` directly.
-    //
-    // On Ubuntu 25.10, `sudo -E` may still succeed but effectively ignores `-E`. Some versions print a warning
-    // to stderr (wording may vary by locale), so we verify behavior instead:
-    // - Inject a sentinel environment variable into the `sudo` process
-    // - Run `sudo -n -E env` and check whether the sentinel is present in stdout
+    /// sudo -E 환경변수 보존 여부 확인 플래그
+    /// 참고: https://github.com/rustdesk/rustdesk/issues/13705
+    ///
+    /// 이 플래그는 run_as_user() 함수에서만 사용됨 (root 서비스 -> 사용자 세션)
+    /// root가 아니면 의미 없으므로 false 반환
+    ///
+    /// Ubuntu 25.10 등에서 sudo -E가 성공하지만 실제로 -E를 무시할 수 있음
+    /// 따라서 동작 검증으로 확인:
+    /// - 테스트 환경변수를 sudo 프로세스에 주입
+    /// - sudo -n -E env 실행 후 테스트 변수가 stdout에 있는지 확인
     static ref SUDO_E_PRESERVES_ENV: bool = {
         if !is_root() {
             log::warn!("Not running as root, SUDO_E_PRESERVES_ENV check skipped");
@@ -69,7 +76,7 @@ lazy_static::lazy_static! {
             let val = "1";
             let expected = format!("{key}={val}");
             Command::new("sudo")
-                // -n for non-interactive to avoid password prompt
+                // -n: 비대화형 모드 (암호 프롬프트 방지)
                 .env(&key, val)
                 .args(["-n", "-E", "env"])
                 .output()
@@ -82,9 +89,10 @@ lazy_static::lazy_static! {
     };
 }
 
+/// 스레드 로컬 변수들
 thread_local! {
-    // XDO context - created via libxdo-sys (which uses dynamic loading stub).
-    // If libxdo is not available, xdo will be null and xdo-based functions become no-ops.
+    /// XDO 컨텍스트 (동적 로딩 스텁 사용)
+    /// libxdo를 사용할 수 없으면 null이 되고, xdo 기반 함수들은 무작동 상태가 됨
     static XDO: RefCell<*mut xdo_t> = RefCell::new({
         let xdo = unsafe { libxdo_sys::xdo_new(std::ptr::null()) };
         if xdo.is_null() {
@@ -94,6 +102,7 @@ thread_local! {
         }
         xdo
     });
+    /// X11 디스플레이 연결
     static DISPLAY: RefCell<*mut c_void> = RefCell::new(unsafe { XOpenDisplay(std::ptr::null())});
 }
 
@@ -110,30 +119,42 @@ extern "C" {
     fn XFree(data: *mut c_void);
 }
 
-// /usr/include/X11/extensions/Xfixes.h
+/// X11 Xfixes 확장의 커서 이미지 정보 구조체
+/// 참고: /usr/include/X11/extensions/Xfixes.h
 #[repr(C)]
 pub struct xcb_xfixes_get_cursor_image {
+    /// 커서 X 좌표
     pub x: i16,
+    /// 커서 Y 좌표
     pub y: i16,
+    /// 커서 이미지 너비
     pub width: u16,
+    /// 커서 이미지 높이
     pub height: u16,
+    /// 커서 핫스팟 X (활성 포인트 X)
     pub xhot: u16,
+    /// 커서 핫스팟 Y (활성 포인트 Y)
     pub yhot: u16,
+    /// 커서 직렬 번호
     pub cursor_serial: c_long,
+    /// 커서 이미지 픽셀 데이터
     pub pixels: *const c_long,
 }
 
+/// Headless 모드가 허용되었는지 확인
 #[inline]
 pub fn is_headless_allowed() -> bool {
     Config::get_option(OPTION_ALLOW_LINUX_HEADLESS) == "Y"
 }
 
+/// Wayland 로그인 화면 사용 여부 확인
 #[inline]
 pub fn is_login_screen_wayland() -> bool {
     let values = get_values_of_seat0_with_gdm_wayland(&[0, 2]);
     is_gdm_user(&values[1]) && get_display_server_of_session(&values[0]) == DISPLAY_SERVER_WAYLAND
 }
 
+/// 밀리초 단위로 스레드 대기
 #[inline]
 fn sleep_millis(millis: u64) {
     std::thread::sleep(Duration::from_millis(millis));

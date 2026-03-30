@@ -31,20 +31,24 @@ use std::{
     time::{Duration, SystemTime},
 };
 
+/// Flutter FFI 세션의 고유 식별자 (UUID)
 pub type SessionID = uuid::Uuid;
 
+/// 텍스처 렌더링 키 (렌더링 상태 추적)
 lazy_static::lazy_static! {
     static ref TEXTURE_RENDER_KEY: Arc<AtomicI32> = Arc::new(AtomicI32::new(0));
 }
 
+/// Flutter FFI 초기화 함수
+/// 애플리케이션 디렉토리와 커스텀 클라이언트 설정을 초기화합니다
 fn initialize(app_dir: &str, custom_client_config: &str) {
     flutter::async_tasks::start_flutter_async_runner();
-    // `APP_DIR` is set in `main_get_data_dir_ios()` on iOS.
+    // iOS에서는 `main_get_data_dir_ios()`에서 `APP_DIR`이 설정됩니다
     #[cfg(not(target_os = "ios"))]
     {
         *config::APP_DIR.write().unwrap() = app_dir.to_owned();
     }
-    // core_main's load_custom_client does not work for flutter since it is only applied to its load_library in main.c
+    // core_main의 load_custom_client는 main.c의 load_library에만 적용되므로 Flutter에서는 작동하지 않습니다
     if custom_client_config.is_empty() {
         crate::load_custom_client();
     } else {
@@ -83,19 +87,26 @@ fn initialize(app_dir: &str, custom_client_config: &str) {
     }
 }
 
+/// Flutter 전역 이벤트 스트림을 시작합니다
 #[inline]
 pub fn start_global_event_stream(s: StreamSink<String>, app_type: String) -> ResultType<()> {
     super::flutter::start_global_event_stream(s, app_type)
 }
 
+/// Flutter 전역 이벤트 스트림을 중지합니다
 #[inline]
 pub fn stop_global_event_stream(app_type: String) {
     super::flutter::stop_global_event_stream(app_type)
 }
+
+/// Flutter UI로 전송하는 이벤트 타입
 pub enum EventToUI {
+    /// JSON 형식의 일반 이벤트
     Event(String),
+    /// RGBA 비디오 프레임 (디스플레이 ID)
     Rgba(usize),
-    Texture(usize, bool), // (display, gpu_texture)
+    /// GPU 텍스처 렌더링 (디스플레이 ID, GPU 텍스처 플래그)
+    Texture(usize, bool),
 }
 
 pub fn host_stop_system_key_propagate(_stopped: bool) {

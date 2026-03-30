@@ -3,31 +3,37 @@ use super::Display;
 use hbb_common::libc;
 use std::{io, ptr, slice};
 
+/// X11 디스플레이에서 MIT-SHM을 사용하여 화면을 캡처합니다.
 pub struct Capturer {
+    // X11 디스플레이
     display: Display,
+    // 공유 메모리 ID
     shmid: i32,
+    // XCB 공유 메모리 ID
     xcbid: u32,
+    // 공유 메모리 버퍼 포인터
     buffer: *const u8,
 
+    // 버퍼 크기
     size: usize,
-    saved_raw_data: Vec<u8>, // for faster compare and copy
+    // 프레임 비교용 저장된 데이터 (더 빠른 비교 및 복사를 위해)
+    saved_raw_data: Vec<u8>,
 }
 
 impl Capturer {
+    /// X11 디스플레이에서 화면 캡처기를 생성합니다.
     pub fn new(display: Display) -> io::Result<Capturer> {
-        // Calculate dimensions.
-
+        // === 화면 크기 계산 ===
         let pixel_width = display.pixfmt().bytes_per_pixel();
         let rect = display.rect();
         let size = (rect.w as usize) * (rect.h as usize) * pixel_width;
 
-        // Create a shared memory segment.
-
+        // === 공유 메모리 세그먼트 생성 ===
         let shmid = unsafe {
             libc::shmget(
                 libc::IPC_PRIVATE,
                 size,
-                // Everyone can do anything.
+                // 모든 사용자가 읽고 쓸 수 있음
                 libc::IPC_CREAT | 0o777,
             )
         };
@@ -36,8 +42,7 @@ impl Capturer {
             return Err(io::Error::last_os_error());
         }
 
-        // Attach the segment to a readable address.
-
+        // === 세그먼트를 읽기 가능한 주소에 연결 ===
         let buffer = unsafe { libc::shmat(shmid, ptr::null(), libc::SHM_RDONLY) } as *mut u8;
 
         if buffer as isize == -1 {

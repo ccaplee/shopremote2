@@ -1,3 +1,6 @@
+/// Linux uinput 드라이버 인터페이스
+/// Linux에서 가상 입력 장치를 생성하여 입력 이벤트 주입
+
 use crate::ipc::{self, new_listener, Connection, Data, DataKeyboard, DataMouse};
 use enigo::{Key, KeyboardControllable, MouseButton, MouseControllable};
 use evdev::{

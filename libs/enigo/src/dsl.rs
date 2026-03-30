@@ -2,27 +2,28 @@ use crate::{Key, KeyboardControllable};
 use std::error::Error;
 use std::fmt;
 
-/// An error that can occur when parsing DSL
+/// DSL(Domain Specific Language) 파싱 중에 발생할 수 있는 에러입니다.
+/// 키보드 입력 DSL의 구문 오류를 나타냅니다.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
-    /// When a tag doesn't exist.
-    /// Example: {+TEST}{-TEST}
-    ///            ^^^^   ^^^^
+    /// 태그가 존재하지 않을 때 발생합니다.
+    /// 예시: {+TEST}{-TEST}
+    ///       ^^^^   ^^^^
     UnknownTag(String),
 
-    /// When a { is encountered inside a {TAG}.
-    /// Example: {+HELLO{WORLD}
-    ///                 ^
+    /// {TAG} 내부에서 {가 발견될 때 발생합니다.
+    /// 예시: {+HELLO{WORLD}
+    ///              ^
     UnexpectedOpen,
 
-    /// When a { is never matched with a }.
-    /// Example: {+SHIFT}Hello{-SHIFT
-    ///                              ^
+    /// {가 }와 매칭되지 않을 때 발생합니다.
+    /// 예시: {+SHIFT}Hello{-SHIFT
+    ///                           ^
     UnmatchedOpen,
 
-    /// Opposite of UnmatchedOpen.
-    /// Example: +SHIFT}Hello{-SHIFT}
-    ///         ^
+    /// UnmatchedOpen의 반대입니다. }가 {없이 나타날 때 발생합니다.
+    /// 예시: +SHIFT}Hello{-SHIFT}
+    ///      ^
     UnmatchedClose,
 }
 impl Error for ParseError {
@@ -41,7 +42,8 @@ impl fmt::Display for ParseError {
     }
 }
 
-/// Evaluate the DSL. This tokenizes the input and presses the keys.
+/// DSL을 평가합니다. 입력을 토큰화하고 키를 누릅니다.
+/// DSL 형식 예: "{+SHIFT}hello{-SHIFT}" -> Shift를 눌러 "HELLO"를 입력합니다.
 pub fn eval<K>(enigo: &mut K, input: &str) -> Result<(), ParseError>
 where
     K: KeyboardControllable,

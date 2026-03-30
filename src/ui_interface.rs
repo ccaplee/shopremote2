@@ -141,7 +141,7 @@ pub fn get_license() -> String {
     if let Ok(lic) = crate::platform::windows::get_license_from_exe_name() {
         #[cfg(feature = "flutter")]
         return format!("Key: {}\nHost: {}\nAPI: {}", lic.key, lic.host, lic.api);
-        // default license format is html formed (sciter)
+        // 기본 라이선스 형식은 HTML 형식입니다 (sciter)
         #[cfg(not(feature = "flutter"))]
         return format!(
             "<br /> Key: {} <br /> Host: {} API: {}",
@@ -367,8 +367,8 @@ pub fn get_sound_inputs() -> Vec<String> {
         fn get_sound_inputs_() -> Vec<String> {
             let mut out = Vec::new();
             use cpal::traits::{DeviceTrait, HostTrait};
-            // Do not use `cpal::host_from_id(cpal::HostId::ScreenCaptureKit)` for feature = "screencapturekit"
-            // Because we explicitly handle the "System Sound" device.
+            // feature = "screencapturekit"에 대해 `cpal::host_from_id(cpal::HostId::ScreenCaptureKit)`를 사용하지 마십시오
+            // "System Sound" 장치를 명시적으로 처리하기 때문입니다.
             let host = cpal::default_host();
             if let Ok(devices) = host.devices() {
                 for device in devices {
@@ -385,7 +385,7 @@ pub fn get_sound_inputs() -> Vec<String> {
 
         let inputs = Arc::new(Mutex::new(Vec::new()));
         let cloned = inputs.clone();
-        // can not call below in UI thread, because conflict with sciter sound com initialization
+        // sciter 사운드 COM 초기화와 충돌하므로 UI 스레드에서 아래를 호출할 수 없습니다
         std::thread::spawn(move || *cloned.lock().unwrap() = get_sound_inputs_())
             .join()
             .ok();
@@ -529,7 +529,7 @@ pub fn get_proxy_status() -> bool {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     return ipc::get_proxy_status();
 
-    // Currently, only the desktop version has proxy settings.
+    // 현재 데스크톱 버전만 프록시 설정이 있습니다.
     #[cfg(any(target_os = "android", target_os = "ios"))]
     return false;
 }
@@ -819,7 +819,7 @@ pub fn change_id(id: String) {
 
 #[inline]
 pub fn http_request(url: String, method: String, body: Option<String>, header: String) {
-    // Respond to concurrent requests for resources
+    // 리소스에 대한 동시 요청에 응답합니다
     let current_request = ASYNC_HTTP_STATUS.clone();
     current_request
         .lock()
@@ -876,7 +876,7 @@ pub fn get_langs() -> String {
 #[inline]
 pub fn video_save_directory(root: bool) -> String {
     let appname = crate::get_app_name();
-    // ui process can show it correctly Once vidoe process created it.
+    // 비디오 프로세스가 생성되면 UI 프로세스가 올바르게 표시할 수 있습니다.
     let try_create = |path: &std::path::Path| {
         if !path.exists() {
             std::fs::create_dir_all(path).ok();
@@ -889,7 +889,7 @@ pub fn video_save_directory(root: bool) -> String {
     };
 
     if root {
-        // Currently, only installed windows run as root
+        // 현재 설치된 Windows만 루트로 실행됩니다
         #[cfg(windows)]
         {
             let drive = std::env::var("SystemDrive").unwrap_or("C:".to_owned());
@@ -898,7 +898,7 @@ pub fn video_save_directory(root: bool) -> String {
             return dir.to_string_lossy().to_string();
         }
     }
-    // Get directory from config file otherwise --server will use the old value from global var.
+    // config 파일에서 디렉터리를 가져옵니다. 그렇지 않으면 --server는 전역 변수의 이전 값을 사용합니다.
     #[cfg(any(target_os = "linux", target_os = "macos"))]
     let dir = LocalConfig::get_option_from_file(OPTION_VIDEO_SAVE_DIRECTORY);
     #[cfg(not(any(target_os = "linux", target_os = "macos")))]
@@ -937,7 +937,7 @@ pub fn video_save_directory(root: bool) -> String {
         }
     }
 
-    // same order as above
+    // 위와 같은 순서
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(home) = crate::platform::get_active_user_home() {
         let name = if cfg!(target_os = "macos") {
@@ -968,7 +968,7 @@ pub fn video_save_directory(root: bool) -> String {
             if !dir.is_empty() {
                 return dir;
             }
-            // basically exist
+            // 기본적으로 존재합니다
             return parent.to_string_lossy().to_string();
         }
     }
@@ -985,7 +985,7 @@ pub fn get_api_server() -> String {
 
 #[inline]
 pub fn has_hwcodec() -> bool {
-    // Has real hardware codec using gpu
+    // GPU를 사용하는 실제 하드웨어 코덱이 있습니다
     (cfg!(feature = "hwcodec") && cfg!(not(target_os = "ios"))) || cfg!(feature = "mediacodec")
 }
 
@@ -1003,7 +1003,7 @@ pub fn supported_hwdecodings() -> (bool, bool) {
     let (mut h264, mut h265) = (decoding.ability_h264 > 0, decoding.ability_h265 > 0);
     #[cfg(feature = "vram")]
     {
-        // supported_decodings check runtime luid
+        // 지원되는_디코딩이 런타임 luid를 확인합니다
         let vram = scrap::vram::VRamDecoder::possible_available_without_check();
         if vram.0 {
             h264 = true;
@@ -1160,7 +1160,7 @@ pub fn get_fingerprint() -> String {
 #[inline]
 pub fn get_login_device_info() -> LoginDeviceInfo {
     LoginDeviceInfo {
-        // std::env::consts::OS is better than whoami::platform() here.
+        // std::env::consts::OS은 여기서 whoami::platform()보다 더 낫습니다.
         os: std::env::consts::OS.to_owned(),
         r#type: "client".to_owned(),
         name: crate::common::hostname(),
@@ -1452,7 +1452,7 @@ async fn check_id(
     ""
 }
 
-// if it's relay id, return id processed, otherwise return original id
+// 릴레이 ID인 경우 처리된 ID를 반환하고, 그렇지 않으면 원본 ID를 반환합니다
 pub fn handle_relay_id(id: &str) -> &str {
     if id.ends_with(r"\r") || id.ends_with(r"/r") {
         &id[0..id.len() - 2]

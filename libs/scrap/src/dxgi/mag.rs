@@ -1,4 +1,5 @@
-// logic from webrtc -- https://github.com/shiguredo/libwebrtc/blob/main/modules/desktop_capture/win/screen_capturer_win_magnifier.cc
+/// Windows Magnification API를 사용한 화면 캡처
+/// 로직 출처: https://github.com/shiguredo/libwebrtc/blob/main/modules/desktop_capture/win/screen_capturer_win_magnifier.cc
 #![allow(non_snake_case)]
 
 use lazy_static;
@@ -49,21 +50,31 @@ extern "C" {
 }
 
 lazy_static::lazy_static! {
+    /// Magnification API 콜백에서 캡처한 프레임 데이터를 저장하는 버퍼
     static ref MAG_BUFFER: Mutex<(bool, Vec<u8>)> =  Default::default();
 }
 
+/// WIC (Windows Imaging Component) 픽셀 형식 GUID 참조
 pub type REFWICPixelFormatGUID = *const GUID;
+/// WIC 픽셀 형식 GUID
 pub type WICPixelFormatGUID = GUID;
 
+/// Magnification API 이미지 헤더 구조체
 #[allow(non_snake_case)]
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct tagMAGIMAGEHEADER {
+    // 이미지 너비 (픽셀)
     pub width: UINT,
+    // 이미지 높이 (픽셀)
     pub height: UINT,
+    // 픽셀 형식 (WIC 형식)
     pub format: WICPixelFormatGUID,
+    // 한 줄의 바이트 수
     pub stride: UINT,
+    // 이미지 데이터의 오프셋
     pub offset: UINT,
+    // 이미지 데이터의 전체 크기
     pub cbSize: SIZE_T,
 }
 pub type MAGIMAGEHEADER = tagMAGIMAGEHEADER;
@@ -114,9 +125,11 @@ struct MagInterface {
     pub set_image_scaling_callback_func: MagSetImageScalingCallbackFunc,
 }
 
-// NOTE: MagInitialize and MagUninitialize should not be called in global init and uninit.
-// If so, strange errors occur.
+/// Magnification API 인터페이스 구현
+/// 주의: MagInitialize와 MagUninitialize는 전역 초기화/해제에서 호출되면 안 됩니다.
+/// 호출 시 이상한 오류가 발생할 수 있습니다.
 impl MagInterface {
+    /// Magnification API 라이브러리를 로드하고 초기화합니다.
     fn new() -> Result<Self> {
         let mut s = MagInterface {
             init_succeeded: false,
@@ -129,7 +142,7 @@ impl MagInterface {
         };
         s.init_succeeded = false;
         unsafe {
-            // load lib
+            // Magnification.dll 로드
             let lib_file_name = "Magnification.dll";
             let lib_file_name_c = CString::new(lib_file_name)?;
             s.lib_handle = LoadLibraryExA(
@@ -141,14 +154,14 @@ impl MagInterface {
                 return Err(Error::new(
                     ErrorKind::Other,
                     format!(
-                        "Failed to LoadLibraryExA {}, error {}",
+                        "LoadLibraryExA {} 실패, 오류: {}",
                         lib_file_name,
                         Error::last_os_error()
                     ),
                 ));
             };
 
-            // load functions
+            // 필요한 함수 포인터 로드
             s.mag_initialize_func = Some(std::mem::transmute(Self::load_func(
                 s.lib_handle,
                 "MagInitialize",
@@ -170,12 +183,12 @@ impl MagInterface {
                 "MagSetImageScalingCallback",
             )?));
 
-            // MagInitialize
+            // Magnification API 초기화
             if let Some(init_func) = s.mag_initialize_func {
                 if FALSE == init_func() {
                     return Err(Error::new(
                         ErrorKind::Other,
-                        format!("Failed to MagInitialize, error {}", Error::last_os_error()),
+                        format!("MagInitialize 실패, 오류: {}", Error::last_os_error()),
                     ));
                 } else {
                     s.init_succeeded = true;
@@ -183,7 +196,7 @@ impl MagInterface {
             } else {
                 return Err(Error::new(
                     ErrorKind::Other,
-                    "Unreachable, mag_initialize_func should not be none",
+                    "도달 불가능, mag_initialize_func는 null이 아니어야 함",
                 ));
             }
         }

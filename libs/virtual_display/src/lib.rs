@@ -1,31 +1,50 @@
+//! 가상 디스플레이 드라이버 관리 라이브러리
+//! Windows에서 가상 디스플레이를 생성하고 관리합니다.
 use hbb_common::{anyhow, dlopen::symbor::Library, log, ResultType};
 use std::{
     collections::HashSet,
     sync::{Arc, Mutex},
 };
 
+/// 가상 디스플레이 동적 라이브러리 이름
 const LIB_NAME_VIRTUAL_DISPLAY: &str = "dylib_virtual_display";
 
+/// Windows DWORD 타입
 pub type DWORD = ::std::os::raw::c_ulong;
+
+/// 모니터 모드 (해상도 및 주사율)를 나타내는 구조체
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct _MonitorMode {
+    /// 모니터 너비 (픽셀)
     pub width: DWORD,
+    /// 모니터 높이 (픽셀)
     pub height: DWORD,
+    /// 주사율 (Hz)
     pub sync: DWORD,
 }
 pub type MonitorMode = _MonitorMode;
 pub type PMonitorMode = *mut MonitorMode;
 
+/// 드라이버 설치 경로를 반환하는 함수 타입
 pub type GetDriverInstallPath = fn() -> &'static str;
+/// 장치가 생성되었는지 확인하는 함수 타입
 pub type IsDeviceCreated = fn() -> bool;
+/// 장치를 종료하는 함수 타입
 pub type CloseDevice = fn();
+/// 드라이버를 다운로드하는 함수 타입
 pub type DownLoadDriver = fn() -> ResultType<()>;
+/// 장치를 생성하는 함수 타입
 pub type CreateDevice = fn() -> ResultType<()>;
+/// 드라이버를 설치하거나 업데이트하는 함수 타입
 pub type InstallUpdateDriver = fn(&mut bool) -> ResultType<()>;
+/// 드라이버를 제거하는 함수 타입
 pub type UninstallDriver = fn(&mut bool) -> ResultType<()>;
+/// 모니터를 연결하는 함수 타입
 pub type PlugInMonitor = fn(u32, u32, u32) -> ResultType<()>;
+/// 모니터를 분리하는 함수 타입
 pub type PlugOutMonitor = fn(u32) -> ResultType<()>;
+/// 모니터 모드를 업데이트하는 함수 타입
 pub type UpdateMonitorModes = fn(u32, u32, PMonitorMode) -> ResultType<()>;
 
 macro_rules! make_lib_wrapper {

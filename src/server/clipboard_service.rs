@@ -27,23 +27,32 @@ use std::{
 #[cfg(windows)]
 use tokio::runtime::Runtime;
 
+/// Android 플랫폼에서 클립보드 서비스 준비 상태 플래그
 #[cfg(target_os = "android")]
 static CLIPBOARD_SERVICE_OK: AtomicBool = AtomicBool::new(false);
 
+/// 클립보드 변경을 감지하고 처리하는 핸들러 구조체
+/// 로컬 클립보드 변경을 모니터링하고 원격으로 전송
 #[cfg(not(target_os = "android"))]
 struct Handler {
+    /// 로컬 클립보드 컨텍스트
     ctx: Option<ClipboardContext>,
+    /// Windows IPC 연결 (스트림 통신 용도)
     #[cfg(target_os = "windows")]
     stream: Option<ipc::ConnectionTmpl<parity_tokio_ipc::ConnectionClient>>,
+    /// Windows 비동기 런타임
     #[cfg(target_os = "windows")]
     rt: Option<Runtime>,
 }
 
+/// Android 플랫폼에서 클립보드 서비스 준비 상태 확인
 #[cfg(target_os = "android")]
 pub fn is_clipboard_service_ok() -> bool {
     CLIPBOARD_SERVICE_OK.load(Ordering::SeqCst)
 }
 
+/// 클립보드 서비스 생성
+/// name: 서비스 이름
 pub fn new(name: String) -> GenericService {
     let svc = EmptyExtraFieldService::new(name, false);
     GenericService::run(&svc.clone(), run);
@@ -121,7 +130,7 @@ impl Handler {
                 }
                 match clipboard::platform::unix::serv_files::sync_files(&urls) {
                     Ok(()) => {
-                        // Use `send_data()` here to reuse `handle_file_clip()` in `connection.rs`.
+                        // `connection.rs`의 `handle_file_clip()`을 재사용하기 위해 `send_data()` 사용
                         hbb_common::allow_err!(clipboard::send_data(
                             0,
                             unix_file_clip::get_format_list()
@@ -143,9 +152,9 @@ impl Handler {
                     log::error!("Failed to read clipboard from cm: {}", e);
                 }
                 Ok(data) => {
-                    // Skip sending empty clipboard data.
-                    // Maybe there's something wrong reading the clipboard data in cm, but no error msg is returned.
-                    // The clipboard data should not be empty, the last line will try again to get the clipboard data.
+                    // 빈 클립보드 데이터 전송 건너뛰기
+                    // 클립보드 데이터를 읽을 때 문제가 있을 수 있지만 오류 메시지가 반환되지 않음
+                    // 클립보드 데이터는 비어있지 않아야 하며, 마지막 줄이 다시 시도함
                     if !data.is_empty() {
                         let mut msg = Message::new();
                         let multi_clipboards = MultiClipboards {

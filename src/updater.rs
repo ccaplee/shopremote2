@@ -96,10 +96,10 @@ fn start_auto_update_check_(rx_msg: Receiver<UpdateMsg>) {
         match &recv_res {
             Ok(UpdateMsg::CheckUpdate) | Err(_) => {
                 if last_check_time.elapsed() < MIN_INTERVAL {
-                    // log::debug!("Update check skipped due to minimum interval.");
+                    // log::debug!("최소 간격으로 인해 업데이트 확인을 건너뜁니다.");
                     continue;
                 }
-                // Don't check update if there are alive connections.
+                // 활성 연결이 있으면 업데이트를 확인하지 마십시오.
                 if !has_no_active_conns() {
                     check_interval = RETRY_INTERVAL;
                     continue;
@@ -124,7 +124,7 @@ fn check_update(manually: bool) -> ResultType<()> {
         return Ok(());
     }
     if do_check_software_update().is_err() {
-        // ignore
+        // 무시하기
         return Ok(());
     }
 
@@ -152,8 +152,8 @@ fn check_update(manually: bool) -> ResultType<()> {
         };
         let mut is_file_exists = false;
         if file_path.exists() {
-            // Check if the file size is the same as the server file size
-            // If the file size is the same, we don't need to download it again.
+            // 파일 크기가 서버 파일 크기와 같은지 확인합니다
+            // 파일 크기가 같으면 다시 다운로드할 필요가 없습니다.
             let file_size = std::fs::metadata(&file_path)?.len();
             let response = client.head(&download_url).send()?;
             if !response.status().is_success() {
@@ -185,9 +185,9 @@ fn check_update(manually: bool) -> ResultType<()> {
             let mut file = std::fs::File::create(&file_path)?;
             file.write_all(&file_data)?;
         }
-        // We have checked if the `conns` is empty before, but we need to check again.
-        // No need to care about the downloaded file here, because it's rare case that the `conns` are empty
-        // before the download, but not empty after the download.
+        // 이전에 `conns`이 비어있는지 확인했지만 다시 확인해야 합니다.
+        // 여기서 다운로드된 파일을 신경 쓸 필요가 없습니다. `conns`이 비어있는 경우는 드물기 때문입니다
+        // 다운로드 전이지만 다운로드 후에는 비어있지 않습니다.
         if has_no_active_conns() {
             #[cfg(target_os = "windows")]
             update_new_version(update_msi, &version, &file_path);
@@ -234,7 +234,7 @@ fn update_new_version(update_msi: bool, version: &str, file_path: &PathBuf) {
                     }
                     Some(custom_client_staging_dir)
                 } else {
-                    // Clean up any residual staging directory from previous custom client
+                    // 이전 사용자 정의 클라이언트의 스테이징 디렉터리를 정리합니다
                     let staging_dir = crate::platform::get_custom_client_staging_dir();
                     hbb_common::allow_err!(crate::platform::remove_custom_client_staging_dir(
                         &staging_dir

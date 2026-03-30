@@ -1,4 +1,6 @@
 #![windows_subsystem = "windows"]
+//! 휴대용 RustDesk 애플리케이션 실행기
+//! 포함된 바이너리와 애플리케이션 메타데이터를 관리하고 실행합니다.
 
 use std::{
     path::{Path, PathBuf},
@@ -11,17 +13,24 @@ pub mod bin_reader;
 #[cfg(windows)]
 mod ui;
 
+/// 애플리케이션 메타데이터 (타임스탬프, 버전 등)
 #[cfg(windows)]
 const APP_METADATA: &[u8] = include_bytes!("../app_metadata.toml");
 #[cfg(not(windows))]
 const APP_METADATA: &[u8] = &[];
+/// 애플리케이션 메타데이터 설정 파일 이름
 const APP_METADATA_CONFIG: &str = "meta.toml";
+/// 타임스탐프 메타데이터의 줄 접두사
 const META_LINE_PREFIX_TIMESTAMP: &str = "timestamp = ";
+/// 애플리케이션 접두사
 const APP_PREFIX: &str = "rustdesk";
+/// 런타임 환경 변수로 애플리케이션 이름 전달
 const APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
+/// 창을 포그라운드로 설정하는 환경 변수 (Windows 전용)
 #[cfg(windows)]
 const SET_FOREGROUND_WINDOW_ENV_KEY: &str = "SET_FOREGROUND_WINDOW";
 
+/// 저장된 타임스탬프와 메타데이터 파일의 타임스탐프가 일치하는지 확인합니다.
 fn is_timestamp_matches(dir: &Path, ts: &mut u64) -> bool {
     let Ok(app_metadata) = std::str::from_utf8(APP_METADATA) else {
         return true;

@@ -61,9 +61,12 @@ extern "C" {
 
 const SHAPE_INPUT: std::ffi::c_int = 2;
 
+/// Xwayland 프로세스에서 X11 디스플레이 번호를 추출합니다.
+/// Xwayland는 Wayland 위에서 X11 호환성을 제공합니다.
 fn get_display_from_xwayland() -> Option<String> {
     if let Ok(output) = crate::platform::run_cmds("pgrep -a Xwayland") {
-        // 1410 /usr/bin/Xwayland :1 -auth /run/user/1000/xauth_RoDZey -listenfd 8 -listenfd 9 -displayfd 76 -wm 78 -rootless -enable-ei-portal
+        // 예: "1410 /usr/bin/Xwayland :1 -auth /run/user/1000/xauth_RoDZey -listenfd 8 ..."
+        // 3번째 필드에서 ":1" 같은 디스플레이 번호 추출
         if output.contains("Xwayland") {
             if let Some(display) = output.split_whitespace().nth(2) {
                 if display.starts_with(':') {
@@ -75,14 +78,17 @@ fn get_display_from_xwayland() -> Option<String> {
     None
 }
 
+/// 환경 변수를 설정하여 X11 또는 Xwayland 디스플레이 사용을 준비합니다.
+/// X11 환경이거나 Xwayland가 실행 중이면 true를 반환합니다.
 fn preset_env() -> bool {
+    // 이미 X11 세션이면 준비 완료
     if crate::platform::is_x11() {
         return true;
     }
+    // Xwayland 사용 가능한 경우
     if let Some(display) = get_display_from_xwayland() {
-        // https://github.com/rust-windowing/winit/blob/f6893a4390dfe6118ce4b33458d458fd3efd3025/src/event_loop.rs#L99
-        // It is acceptable to modify global environment variables here because this process is an isolated,
-        // dedicated "whiteboard" process.
+        // 참조: https://github.com/rust-windowing/winit/blob/f6893a4390dfe6118ce4b33458d458fd3efd3025/src/event_loop.rs#L99
+        // 이 프로세스는 격리된 "화이트보드" 프로세스이므로 전역 환경 변수 수정이 안전합니다.
         std::env::set_var("DISPLAY", display);
         std::env::remove_var("WAYLAND_DISPLAY");
         return true;
@@ -90,62 +96,79 @@ fn preset_env() -> bool {
     false
 }
 
+/// Linux 플랫폼에서 화이트보드가 지원되는지 확인합니다.
+/// X11 또는 Xwayland가 사용 가능하면 지원됩니다.
 pub fn is_supported() -> bool {
     crate::platform::is_x11() || get_display_from_xwayland().is_some()
 }
 
+/// Linux에서 화이트보드 이벤트 루프를 시작합니다.
 pub fn run() {
+    // X11/Xwayland 환경 설정
     if !preset_env() {
         return;
     }
 
+    // winit 이벤트 루프 생성
     let event_loop = match EventLoop::<(String, CustomEvent)>::with_user_event().build() {
         Ok(el) => el,
         Err(e) => {
-            log::error!("Failed to create event loop: {}", e);
+            log::error!("이벤트 루프 생성 실패: {}", e);
             return;
         }
     };
 
+    // 이벤트 루프 프록시 설정 (다른 스레드에서 UI 이벤트 전송용)
     let event_loop_proxy = event_loop.create_proxy();
     EVENT_PROXY.write().unwrap().replace(event_loop_proxy);
 
+    // IPC 서버 시작 채널
     let (tx_exit, rx_exit) = unbounded_channel();
     std::thread::spawn(move || {
         super::server::start_ipc(rx_exit);
     });
 
+    // 화이트보드 애플리케이션 초기화
     let mut app = match WhiteboardApplication::new(&event_loop) {
         Ok(app) => app,
         Err(e) => {
-            log::error!("Failed to create whiteboard application: {}", e);
+            log::error!("화이트보드 애플리케이션 생성 실패: {}", e);
             tx_exit.send(()).ok();
             return;
         }
     };
 
+    // 이벤트 루프 실행
     if let Err(e) = event_loop.run_app(&mut app) {
-        log::error!("Failed to run app: {}", e);
+        log::error!("애플리케이션 실행 실패: {}", e);
         tx_exit.send(()).ok();
         return;
     }
 }
 
+/// X11 윈도우 상태를 나타내는 구조체
 struct WindowState {
+    // Winit 윈도우
     window: Arc<Window>,
-    // NOTE: This surface must be dropped before the `Window`.
+    // 주의: 이 surface는 `Window`보다 먼저 drop되어야 합니다.
+    // softbuffer 서피스 (화면에 그리기 위한 버퍼)
     surface: Surface<DisplayHandle<'static>, Arc<Window>>,
+    // 현재 활성 중인 리플 애니메이션 목록
     ripples: Vec<Ripple>,
+    // 연결별 마지막 커서 정보 (키: 연결 ID, 값: 커서 정보)
     last_cursors: HashMap<String, Cursor>,
 }
 
+/// 화이트보드 애플리케이션의 상태를 나타내는 구조체
 struct WhiteboardApplication {
+    // 모든 디스플레이에 대한 윈도우 목록
     windows: Vec<WindowState>,
-    // Drawing context.
-    //
-    // With OpenGL it could be EGLDisplay.
+    // 그리기 컨텍스트
+    // OpenGL을 사용하는 경우 EGLDisplay가 됨
     context: Option<Context<DisplayHandle<'static>>>,
+    // 커서 텍스트 렌더링용 글꼴 면
     face: Option<Face<'static>>,
+    // 종료 요청 플래그
     close_requested: bool,
 }
 

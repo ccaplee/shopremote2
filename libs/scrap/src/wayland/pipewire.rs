@@ -36,27 +36,33 @@ lazy_static! {
     pub static ref RDP_SESSION_INFO: Mutex<Option<RdpSessionInfo>> = Mutex::new(None);
 }
 
+/// PipeWire 디스플레이 오프셋 캐시 (KDE Plasma 전용)
+/// GNOME은 위치 정보를 제공하지만 KDE는 제공하지 않을 수 있으므로 캐싱이 필요합니다.
 #[derive(Serialize, Deserialize)]
-// For KDE Plasma only, because GNOME provides position info.
 struct PipewireDisplayOffsetCache {
-    // We need to compare the displays, because:
-    // 1. On Archlinux KDE Plasma
-    // 2. One display, and connect, remember share choice.
-    // 3. Plug in another monitor.
-    // 4. The portal will reuse the restore token, no new share choice dialog, but the share screen is different.
-    //    The controlling side will see the new monitor.
-    // All displays as one string for easy comparison
-    // name1-x1-y1-width1-height1;name2-x2-y2-width2-height2;...
+    /// 디스플레이 구성을 비교하기 위해 필요합니다.
+    /// 캐시 사례:
+    /// 1. Archlinux KDE Plasma에서
+    /// 2. 한 개 디스플레이로 공유 시작 후 선택지 기억
+    /// 3. 다른 모니터 연결
+    /// 4. Portal이 restore token 재사용, 새 공유 선택 다이얼로그 없음, 하지만 공유 화면이 다름
+    ///    제어 측에서는 새 모니터를 볼 수 있음
+    /// 모든 디스플레이를 비교하기 쉬운 하나의 문자열로 표현
+    /// format: name1-x1-y1-width1-height1;name2-x2-y2-width2-height2;...
     display_key: String,
+    /// Portal 세션 복원 토큰
     restore_token: String,
+    /// 각 디스플레이의 오프셋 (X, Y 좌표)
     offsets: Vec<(i32, i32)>,
 }
 
-// KDE Plasma may not provide position info
+/// KDE Plasma는 위치 속성을 제공하지 않을 수 있습니다.
 static HAS_POSITION_ATTR: AtomicBool = AtomicBool::new(false);
-static IS_SERVER_RUNNING: AtomicU8 = AtomicU8::new(0); // 0: uninitialized, 1:true, 2: false
+/// 서버 실행 상태 플래그 (0: 초기화 안 됨, 1: 실행 중, 2: 실행 중 아님)
+static IS_SERVER_RUNNING: AtomicU8 = AtomicU8::new(0);
 
 impl PipewireDisplayOffsetCache {
+    /// 디스플레이 목록을 캐시 키 문자열로 변환합니다.
     fn displays_to_key(displays: &Arc<Displays>) -> String {
         displays
             .displays
@@ -67,6 +73,7 @@ impl PipewireDisplayOffsetCache {
     }
 }
 
+/// RDP 세션을 종료하고 캐시를 정리합니다.
 #[inline]
 pub fn close_session() {
     let _ = RDP_SESSION_INFO.lock().unwrap().take();
@@ -74,16 +81,19 @@ pub fn close_session() {
     HAS_POSITION_ATTR.store(false, Ordering::SeqCst);
 }
 
+/// RDP 세션이 활성 상태인지 확인합니다.
 #[inline]
 pub fn is_rdp_session_hold() -> bool {
     RDP_SESSION_INFO.lock().unwrap().is_some()
 }
 
+/// 필요에 따라 RDP 세션을 종료합니다.
+/// 서버가 실행 중이고 restore token을 지원하면 세션을 유지할 필요가 없습니다.
 pub fn try_close_session() {
     let mut rdp_info = RDP_SESSION_INFO.lock().unwrap();
     let mut close = false;
     if let Some(rdp_info) = &*rdp_info {
-        // If is server running and restore token is supported, there's no need to keep the session.
+        // 서버가 실행 중이고 restore token을 지원하면 세션을 종료할 수 있습니다.
         if is_server_running() && rdp_info.is_support_restore_token {
             close = true;
         }
@@ -95,8 +105,11 @@ pub fn try_close_session() {
     }
 }
 
+/// RDP 세션 정보를 저장하는 구조체
 pub struct RdpSessionInfo {
+    // D-Bus 동기 연결
     pub conn: Arc<SyncConnection>,
+    // PipeWire 스트림 목록
     pub streams: Vec<PwStreamInfo>,
     pub fd: OwnedFd,
     pub session: dbus::Path<'static>,
