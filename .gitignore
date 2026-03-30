@@ -14,9 +14,10 @@ src/version.rs
 *tgz
 cert.pfx
 *.bak
-*png
-*svg
-*jpg
+# 이미지 파일은 리소스로 필요하므로 추적함
+# *png
+# *svg
+# *jpg
 sciter.dll
 **pdb
 src/bridge_generated.rs
