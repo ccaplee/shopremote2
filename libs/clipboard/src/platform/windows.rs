@@ -997,7 +997,7 @@ pub fn create_cliprdr_context(
     )?)
 }
 
-/// FreeRDP에서 호출하는 콜백 함수입니다. 클립보드 작업의 상태 알림을 받습니다.
+// FreeRDP에서 호출하는 콜백 함수입니다. 클립보드 작업의 상태 알림을 받습니다.
 extern "C" fn notify_callback(conn_id: UINT32, msg: *const NOTIFICATION_MESSAGE) -> UINT {
     log::debug!("notify_callback called");
     let data = unsafe {

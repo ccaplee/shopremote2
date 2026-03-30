@@ -17,10 +17,10 @@ use std::process::exit;
 #[cfg(not(debug_assertions))]
 static mut GLOBAL_CALLBACK: Option<Box<dyn Fn()>> = None;
 
-/// 프로그램 크래시 신호 핸들러입니다.
-/// 스택 트레이스를 수집하고 특정 컴포넌트의 문제를 감지합니다.
-/// (GPU 드라이버 에러 감지: Nouveau, NVIDIA, GDK)
-/// (하드웨어 인코딩 에러 감지: NVIDIA, AMF, MFX)
+// 프로그램 크래시 신호 핸들러입니다.
+// 스택 트레이스를 수집하고 특정 컴포넌트의 문제를 감지합니다.
+// (GPU 드라이버 에러 감지: Nouveau, NVIDIA, GDK)
+// (하드웨어 인코딩 에러 감지: NVIDIA, AMF, MFX)
 #[cfg(not(debug_assertions))]
 extern "C" fn breakdown_signal_handler(sig: i32) {
     let mut stack = vec![];

@@ -18,11 +18,11 @@ fn is_level(level: *const c_char, level_bytes: &[u8]) -> bool {
     level_bytes == unsafe { std::slice::from_raw_parts(level as *const u8, level_bytes.len()) }
 }
 
-/// 플러그인으로부터 로그 메시지를 받는 콜백 함수
-///
-/// # 매개변수
-/// * `level` - 로그 레벨 ("trace", "debug", "info", "warn", "error")
-/// * `msg` - 로그 메시지 (UTF-8 널 종료 문자열)
+// 플러그인으로부터 로그 메시지를 받는 콜백 함수
+//
+// # 매개변수
+// * `level` - 로그 레벨 ("trace", "debug", "info", "warn", "error")
+// * `msg` - 로그 메시지 (UTF-8 널 종료 문자열)
 #[no_mangle]
 pub(super) extern "C" fn plugin_log(level: *const c_char, msg: *const c_char) {
     if level.is_null() || msg.is_null() {
