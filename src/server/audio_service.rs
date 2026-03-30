@@ -1,12 +1,15 @@
-// both soundio and cpal use wasapi on windows and coreaudio on mac, they do not support loopback.
-// libpulseaudio support loopback because pulseaudio is a standalone audio service with some
-// configuration, but need to install the library and start the service on OS, not a good choice.
-// windows: https://docs.microsoft.com/en-us/windows/win32/coreaudio/loopback-recording
-// mac: https://github.com/mattingalls/Soundflower
+/// 오디오 캡처 및 처리 서비스
+/// Opus 코덱을 사용한 오디오 인코딩 및 실시간 스트리밍 구현
+
+// soundio와 cpal은 Windows에서 wasapi, Mac에서 coreaudio를 사용하며, 루프백을 지원하지 않음
+// libpulseaudio는 pulseaudio가 독립형 오디오 서비스이므로 루프백 지원
+// 하지만 라이브러리를 설치하고 OS에서 서비스를 시작해야 하므로 좋은 선택이 아님
+// Windows: https://docs.microsoft.com/en-us/windows/win32/coreaudio/loopback-recording
+// Mac: https://github.com/mattingalls/Soundflower
 // https://docs.microsoft.com/en-us/windows/win32/api/audioclient/nn-audioclient-iaudioclient
 // https://github.com/ExistentialAudio/BlackHole
 
-// if pactl not work, please run
+// pactl이 작동하지 않으면 다음을 실행하세요:
 // sudo apt-get --purge --reinstall install pulseaudio
 // https://askubuntu.com/questions/403416/how-to-listen-live-sounds-from-input-from-external-sound-card
 // https://wiki.debian.org/audio-loopback
@@ -18,11 +21,15 @@ use hbb_common::anyhow::anyhow;
 use magnum_opus::{Application::*, Channels::*, Encoder};
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// 오디오 서비스 이름
 pub const NAME: &'static str = "audio";
-pub const AUDIO_DATA_SIZE_U8: usize = 960 * 4; // 10ms in 48000 stereo
+/// 오디오 데이터 크기 (바이트) - 48000Hz 스테레오 10ms
+pub const AUDIO_DATA_SIZE_U8: usize = 960 * 4;
+/// 오디오 서비스 재시작 플래그
 static RESTARTING: AtomicBool = AtomicBool::new(false);
 
 lazy_static::lazy_static! {
+    /// 음성 통화 입력 장치 설정
     static ref VOICE_CALL_INPUT_DEVICE: Arc::<Mutex::<Option<String>>> = Default::default();
 }
 
@@ -79,7 +86,7 @@ pub fn restart() {
 mod pa_impl {
     use super::*;
 
-    // SAFETY: constrains of hbb_common::mem::aligned_u8_vec must be held
+    // 안전성: hbb_common::mem::aligned_u8_vec의 제약 조건을 유지해야 함
     unsafe fn align_to_32(data: Vec<u8>) -> Vec<u8> {
         if (data.as_ptr() as usize & 3) == 0 {
             return data;
@@ -350,7 +357,7 @@ mod cpal_impl {
         use cpal::SampleFormat::*;
         let (device, config) = get_device()?;
         let sp = sp.clone();
-        // Sample rate must be one of 8000, 12000, 16000, 24000, or 48000.
+        // 샘플 레이트는 8000, 12000, 16000, 24000, 또는 48000 중 하나여야 함
         let sample_rate_0 = config.sample_rate().0;
         let sample_rate = if sample_rate_0 < 12000 {
             8000
@@ -407,8 +414,8 @@ mod cpal_impl {
         let mut encoder = Encoder::new(sample_rate, encode_channel, LowDelay)?;
         // https://www.opus-codec.org/docs/html_api/group__opusencoder.html#gace941e4ef26ed844879fde342ffbe546
         // https://chromium.googlesource.com/chromium/deps/opus/+/1.1.1/include/opus.h
-        // Do not set `frame_size = sample_rate as usize / 100;`
-        // Because we find `sample_rate as usize / 100` will cause encoder error in `encoder.encode_vec_float()` sometimes.
+        // `frame_size = sample_rate as usize / 100;`로 설정하지 말 것
+        // `sample_rate as usize / 100`이 `encoder.encode_vec_float()`에서 인코더 오류를 유발할 수 있으므로
         // https://github.com/xiph/opus/blob/2554a89e02c7fc30a980b4f7e635ceae1ecba5d6/src/opus_encoder.c#L725
         let frame_size = sample_rate_0 as usize / 100; // 10 ms
         let encode_len = frame_size * encode_channel as usize;
@@ -461,7 +468,7 @@ fn create_format_msg(sample_rate: u32, channels: u16) -> Message {
 
 // use AUDIO_ZERO_COUNT for the Noise(Zero) Gate Attack Time
 // every audio data length is set to 480
-// MAX_AUDIO_ZERO_COUNT=800 is similar as Gate Attack Time 3~5s(Linux) || 6~8s(Windows)
+// MAX_AUDIO_ZERO_COUNT=800은 게이트 공격 시간 3~5초(Linux) || 6~8초(Windows)와 유사
 const MAX_AUDIO_ZERO_COUNT: u16 = 800;
 static mut AUDIO_ZERO_COUNT: u16 = 0;
 

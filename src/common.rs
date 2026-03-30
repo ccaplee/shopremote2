@@ -43,26 +43,36 @@ use crate::{
 };
 
 #[derive(Debug, Eq, PartialEq)]
+/// 화면 캡처 상태 열거형
+/// 화면 녹화 또는 실시간 캡처의 상태를 나타낸다.
 pub enum GrabState {
+    // 준비 완료
     Ready,
+    // 실행 중
     Run,
+    // 대기 중
     Wait,
+    // 종료
     Exit,
 }
 
 pub type NotifyMessageBox = fn(String, String, String, String) -> dyn Future<Output = ()>;
 
-// the executable name of the portable version
+// Portable 버전의 실행 파일명을 저장하는 환경변수 키
 pub const PORTABLE_APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
 
+// 플랫폼 상수들
 pub const PLATFORM_WINDOWS: &str = "Windows";
 pub const PLATFORM_LINUX: &str = "Linux";
 pub const PLATFORM_MACOS: &str = "Mac OS";
 pub const PLATFORM_ANDROID: &str = "Android";
 
+// 일반 타임아웃 (1초)
 pub const TIMER_OUT: Duration = Duration::from_secs(1);
+// 기본 연결 유지 간격 (60초)
 pub const DEFAULT_KEEP_ALIVE: i32 = 60_000;
 
+// 다중 UI 세션을 지원하는 최소 버전
 const MIN_VER_MULTI_UI_SESSION: &str = "1.2.4";
 
 pub mod input {
@@ -100,20 +110,28 @@ lazy_static::lazy_static! {
 }
 
 lazy_static::lazy_static! {
-    // Is server process, with "--server" args
+    // 서버 프로세스 여부 ("--server" 인자로 실행되었는지)
     static ref IS_SERVER: bool = std::env::args().nth(1) == Some("--server".to_owned());
-    // Is server logic running. The server code can invoked to run by the main process if --server is not running.
+    // 서버 로직 실행 여부
+    // 메인 프로세스에서도 서버 코드를 실행할 수 있으므로 IS_SERVER와는 독립적이다.
     static ref SERVER_RUNNING: Arc<RwLock<bool>> = Default::default();
+    // 메인 UI 프로세스 여부 (첫 인자가 "--"로 시작하지 않으면 메인 프로세스)
     static ref IS_MAIN: bool = std::env::args().nth(1).map_or(true, |arg| !arg.starts_with("--"));
+    // 연결 관리자(Connection Manager) 프로세스 여부
     static ref IS_CM: bool = std::env::args().nth(1) == Some("--cm".to_owned()) || std::env::args().nth(1) == Some("--cm-no-ui".to_owned());
 }
 
+/// 범위를 벗어날 때 자동으로 함수를 호출하는 구조체
+/// RAII 패턴을 사용하여 리소스 정리 등의 작업을 자동화한다.
 pub struct SimpleCallOnReturn {
+    // 함수를 호출할지 여부
     pub b: bool,
+    // 범위 종료 시 호출할 함수
     pub f: Box<dyn Fn() + Send + 'static>,
 }
 
 impl Drop for SimpleCallOnReturn {
+    /// 구조체가 드롭될 때 조건에 따라 저장된 함수를 호출한다.
     fn drop(&mut self) {
         if self.b {
             (self.f)();
@@ -121,9 +139,16 @@ impl Drop for SimpleCallOnReturn {
     }
 }
 
+/// 애플리케이션 전역 초기화 함수
+/// 플랫폼별 초기화 작업을 수행한다.
+/// - Linux: Wayland 디스플레이 서버 초기화
+///
+/// # 반환
+/// 항상 true를 반환한다.
 pub fn global_init() -> bool {
     #[cfg(target_os = "linux")]
     {
+        // Linux: X11이 아닌 경우 Wayland 초기화
         if !crate::platform::linux::is_x11() {
             crate::server::wayland::init();
         }
@@ -131,8 +156,10 @@ pub fn global_init() -> bool {
     true
 }
 
+/// 애플리케이션 전역 정리 함수
 pub fn global_clean() {}
 
+/// 서버 실행 상태 설정
 #[inline]
 pub fn set_server_running(b: bool) {
     *SERVER_RUNNING.write().unwrap() = b;
@@ -143,27 +170,32 @@ pub fn is_support_multi_ui_session(ver: &str) -> bool {
     is_support_multi_ui_session_num(hbb_common::get_version_number(ver))
 }
 
+/// 다중 UI 세션 지원 여부 확인 (버전 번호로 판단)
 #[inline]
 pub fn is_support_multi_ui_session_num(ver: i64) -> bool {
     ver >= hbb_common::get_version_number(MIN_VER_MULTI_UI_SESSION)
 }
 
+/// Unix 파일 복사/붙여넣기 기능 지원 여부 확인 (v1.3.8 이상)
 #[inline]
 #[cfg(feature = "unix-file-copy-paste")]
 pub fn is_support_file_copy_paste(ver: &str) -> bool {
     is_support_file_copy_paste_num(hbb_common::get_version_number(ver))
 }
 
+/// Unix 파일 복사/붙여넣기 기능 지원 여부 확인 (버전 번호로 판단)
 #[inline]
 #[cfg(feature = "unix-file-copy-paste")]
 pub fn is_support_file_copy_paste_num(ver: i64) -> bool {
     ver >= hbb_common::get_version_number("1.3.8")
 }
 
+/// 원격 프린터 기능 지원 여부 확인 (v1.3.9 이상)
 pub fn is_support_remote_print(ver: &str) -> bool {
     hbb_common::get_version_number(ver) >= hbb_common::get_version_number("1.3.9")
 }
 
+/// macOS에서의 파일 붙여넣기 기능 지원 여부 확인 (v1.3.9 이상)
 pub fn is_support_file_paste_if_macos(ver: &str) -> bool {
     hbb_common::get_version_number(ver) >= hbb_common::get_version_number("1.3.9")
 }

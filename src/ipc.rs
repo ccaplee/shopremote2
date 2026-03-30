@@ -41,10 +41,14 @@ use hbb_common::{
 
 use crate::{common::is_server, privacy_mode, rendezvous_mediator::RendezvousMediator};
 
-// IPC actions here.
+// IPC(프로세스 간 통신) 액션 상수들
+// 연결 종료 요청 액션
 pub const IPC_ACTION_CLOSE: &str = "close";
+// 종료 신호 수신 여부를 나타내는 원자적 부울값
 pub static EXIT_RECV_CLOSE: AtomicBool = AtomicBool::new(true);
 
+/// 파일 시스템 작업 열거형
+/// 파일 업로드/다운로드, 디렉토리 탐색, 파일 삭제 등의 작업을 정의한다.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "t", content = "c")]
 pub enum FS {
@@ -216,22 +220,38 @@ pub enum DataPortableService {
     CmShowElevation(bool),
 }
 
+/// IPC 프로세스 간 통신 데이터 열거형
+/// 로그인, 설정 동기화, 파일 시스템 작업, 연결 제어 등의 메시지를 정의한다.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "t", content = "c")]
 pub enum Data {
+    /// 연결 로그인 요청 및 정보
     Login {
+        // 연결 ID
         id: i32,
+        // 파일 전송 기능 활성화 여부
         is_file_transfer: bool,
+        // 카메라 보기 기능 활성화 여부
         is_view_camera: bool,
+        // 터미널 기능 활성화 여부
         is_terminal: bool,
+        // 원격 피어 ID
         peer_id: String,
+        // 피어 이름
         name: String,
+        // 피어 아바타 URL
         avatar: String,
+        // 권한 승인 여부
         authorized: bool,
+        // 포트 포워딩 설정
         port_forward: String,
+        // 키보드 입력 권한
         keyboard: bool,
+        // 클립보드 공유 권한
         clipboard: bool,
+        // 음성 스트리밍 권한
         audio: bool,
+        // 파일 전송 권한
         file: bool,
         file_transfer_enabled: bool,
         restart: bool,

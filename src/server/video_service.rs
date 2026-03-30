@@ -3,6 +3,9 @@
 // Our eyes can see a slight difference and even though 30FPS actually shows
 // more information and is more realistic.
 // 60FPS is commonly used in game, teamviewer 12 support this for video editing user.
+/// 비디오 스트리밍 서비스
+/// 디스플레이 화면을 캡처하여 인코딩하고 원격으로 전송
+
 
 // how to capture with mouse cursor:
 // https://docs.microsoft.com/zh-cn/windows/win32/direct3ddxgi/desktop-dup-api?redirectedfrom=MSDN

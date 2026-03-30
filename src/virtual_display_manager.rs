@@ -1,6 +1,6 @@
 use hbb_common::{bail, platform::windows::is_windows_version_or_greater, ResultType};
 
-// This string is defined here.
+// 이 문자열은 여기에 정의되어 있습니다.
 //  https://github.com/rustdesk-org/RustDeskIddDriver/blob/b370aad3f50028b039aad211df60c8051c4a64d6/RustDeskIddDriver/RustDeskIddDriver.inf#LL73C1-L73C40
 pub const RUSTDESK_IDD_DEVICE_STRING: &'static str = "RustDeskIddDriver Device\0";
 pub const AMYUNI_IDD_DEVICE_STRING: &'static str = "USB Mobile Monitor Virtual Display\0";
@@ -136,7 +136,7 @@ pub mod rustdesk_idd {
         sync::{Arc, Mutex},
     };
 
-    // virtual display index range: 0 - 2 are reserved for headless and other special uses.
+    // 가상 디스플레이 인덱스 범위: 0-2는 헤드리스 및 기타 특수 용도로 예약되어 있습니다.
     const VIRTUAL_DISPLAY_INDEX_FOR_HEADLESS: u32 = 0;
     const VIRTUAL_DISPLAY_START_FOR_PEER: u32 = 1;
     const VIRTUAL_DISPLAY_MAX_COUNT: u32 = 5;
@@ -167,7 +167,7 @@ pub mod rustdesk_idd {
                     bail!("Create device failed {}", e);
                 }
             }
-            // Reboot is not required for this case.
+            // 이 경우 재부팅이 필요하지 않습니다.
             let mut _reboot_required = false;
             virtual_display::install_update_driver(&mut _reboot_required)?;
             self.is_driver_installed = true;
@@ -237,7 +237,7 @@ pub mod rustdesk_idd {
                 );
                 return "".to_string();
             }
-            // Sleep is needed here to wait for the virtual display to be ready.
+            // 가상 디스플레이가 준비될 때까지 기다리기 위해 여기서 대기가 필요합니다.
             std::thread::sleep(std::time::Duration::from_millis(50));
         }
         log::error!("Failed to get diff device names after plugin virtual display",);
@@ -411,12 +411,12 @@ pub mod amyuni_idd {
         static ref LAST_PLUG_IN_HEADLESS_TIME: Arc<Mutex<Option<Instant>>> = Arc::new(Mutex::new(None));
     }
     const VIRTUAL_DISPLAY_MAX_COUNT: usize = 4;
-    // The count of virtual displays plugged in.
-    // This count is not accurate, because:
+    // 연결된 가상 디스플레이의 수입니다.
+    // 이 개수는 정확하지 않습니다. 이유는:
     // 1. The virtual display driver may also be controlled by other processes.
     // 2. RustDesk may crash and restart, but the virtual displays are kept.
     //
-    // to-do: Maybe a better way is to add an option asking the user if plug out all virtual displays on disconnect.
+    // 할 일: 더 나은 방법은 연결 해제 시 모든 가상 디스플레이를 뽑을지 묻는 옵션을 추가하는 것입니다.
     static VIRTUAL_DISPLAY_COUNT: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
 
     fn get_deviceinstaller64_work_dir() -> ResultType<Option<Vec<u8>>> {
@@ -446,7 +446,7 @@ pub mod amyuni_idd {
             if crate::platform::windows::is_x64() {
                 log::info!("Uninstalling driver by deviceinstaller64.exe");
                 install_if_x86_on_x64(&work_dir, "remove usbmmidd")?;
-                // Sleep some time to wait for the driver to be uninstalled.
+                // 드라이버가 제거될 때까지 기다리기 위해 잠시 대기합니다.
                 std::thread::sleep(Duration::from_secs(2));
                 return Ok(());
             }
@@ -458,8 +458,8 @@ pub mod amyuni_idd {
         Ok(())
     }
 
-    // SetupDiCallClassInstaller() will always fail if current_exe() is built as x86 and running on x64.
-    // So we need to call another x64 version exe to install and uninstall the driver.
+    // SetupDiCallClassInstaller()은 current_exe()가 x86으로 빌드되고 x64에서 실행 중인 경우 항상 실패합니다.
+    // 따라서 드라이버를 설치 및 제거하기 위해 다른 x64 버전 exe를 호출해야 합니다.
     fn install_if_x86_on_x64(work_dir: &[u8], args: &str) -> ResultType<()> {
         const SW_HIDE: i32 = 0;
         let mut args = args.bytes().collect::<Vec<_>>();
@@ -483,8 +483,8 @@ pub mod amyuni_idd {
         Ok(())
     }
 
-    // If the driver is installed by "deviceinstaller64.exe", the driver will be installed asynchronously.
-    // The caller must wait some time before using the driver.
+    // 드라이버가 "deviceinstaller64.exe"에 의해 설치되면 드라이버가 비동기적으로 설치됩니다.
+    // 호출자는 드라이버를 사용하기 전에 잠시 기다려야 합니다.
     fn check_install_driver(is_async: &mut bool) -> ResultType<()> {
         let _l = LOCK.lock().unwrap();
         let drivers = windows::get_display_drivers();
@@ -550,10 +550,10 @@ pub mod amyuni_idd {
                 std::thread::sleep(Duration::from_millis(30));
             }
         }
-        // No need to consider concurrency here.
+        // 여기서 동시성을 고려할 필요가 없습니다.
         if add {
-            // If the monitor is plugged in, increase the count.
-            // Though there's already a check of `VIRTUAL_DISPLAY_MAX_COUNT`, it's still better to check here for double ensure.
+            // 모니터가 연결되면 수를 늘립니다.
+            // `VIRTUAL_DISPLAY_MAX_COUNT`에 대한 확인이 이미 있지만 여기서 이중 확인하는 것이 더 좋습니다.
             if VIRTUAL_DISPLAY_COUNT.load(atomic::Ordering::SeqCst) < VIRTUAL_DISPLAY_MAX_COUNT {
                 VIRTUAL_DISPLAY_COUNT.fetch_add(1, atomic::Ordering::SeqCst);
             }
@@ -566,7 +566,7 @@ pub mod amyuni_idd {
     }
 
     // `std::thread::sleep()` with a timeout is acceptable here.
-    // Because user can wait for a while to plug in a monitor.
+    // 사용자가 모니터를 연결하기 위해 한동안 기다릴 수 있기 때문입니다.
     fn plug_in_monitor_(
         add: bool,
         is_driver_async_installed: bool,
@@ -595,7 +595,7 @@ pub mod amyuni_idd {
                 }
             }
         }
-        // Workaround for the issue that we can't set the default the resolution.
+        // 기본 해상도를 설정할 수 없는 문제에 대한 해결책입니다.
         if let Ok(old_connectivity_old) = reg_connectivity_old {
             std::thread::spawn(move || {
                 try_reset_resolution_on_first_plug_in(old_connectivity_old.len(), 1920, 1080);
@@ -661,10 +661,10 @@ pub mod amyuni_idd {
     // `index` the display index to plug out. -1 means plug out all.
     // `force_all` is used to forcibly plug out all virtual displays.
     // `force_one` is used to forcibly plug out one virtual display managed by other processes
-    //             if there're no virtual displays managed by RustDesk.
+    //             RustDesk에서 관리하는 가상 디스플레이가 없는 경우입니다.
     pub fn plug_out_monitor(index: i32, force_all: bool, force_one: bool) -> ResultType<()> {
         let plug_out_all = index == super::IDD_PLUG_OUT_ALL_INDEX;
-        // If `plug_out_all and force_all` is true, forcibly plug out all virtual displays.
+        // `plug_out_all and force_all`이 true이면 모든 가상 디스플레이를 강제로 분리합니다.
         // Though the driver may be controlled by other processes,
         // we still forcibly plug out all virtual displays.
         //

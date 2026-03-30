@@ -1,3 +1,6 @@
+// 플러그인 시스템 모듈
+// 플러그인 로딩, 관리, 이벤트 처리 담당
+
 use hbb_common::{bail, libc, log, ResultType};
 #[cfg(target_os = "windows")]
 use std::env;
@@ -7,18 +10,20 @@ use std::{
     ptr::null,
 };
 
-mod callback_ext;
-mod callback_msg;
-mod config;
-pub mod desc;
-mod errno;
-pub mod ipc;
-mod manager;
-pub mod native;
-pub mod native_handlers;
-mod plog;
-mod plugins;
+// 플러그인 관련 하위 모듈
+mod callback_ext;      // 콜백 확장 기능
+mod callback_msg;      // 콜백 메시지 정의
+mod config;            // 플러그인 설정 관리
+pub mod desc;          // 플러그인 설명자
+mod errno;             // 에러 코드 정의
+pub mod ipc;           // 프로세스 간 통신
+mod manager;           // 플러그인 생명주기 관리
+pub mod native;        // 네이티브 플러그인 함수
+pub mod native_handlers; // 네이티브 함수 핸들러
+mod plog;              // 플러그인 로깅
+mod plugins;           // 플러그인 인스턴스 관리
 
+// 공개 API 내보내기
 pub use manager::{
     install::{change_uninstall_plugin, install_plugin_with_url},
     install_plugin, load_plugin_list, remove_uninstalled, uninstall_plugin,
@@ -28,33 +33,41 @@ pub use plugins::{
     reload_plugin, sync_ui, unload_plugin,
 };
 
-const MSG_TO_UI_TYPE_PLUGIN_EVENT: &str = "plugin_event";
-const MSG_TO_UI_TYPE_PLUGIN_RELOAD: &str = "plugin_reload";
-const MSG_TO_UI_TYPE_PLUGIN_OPTION: &str = "plugin_option";
-const MSG_TO_UI_TYPE_PLUGIN_MANAGER: &str = "plugin_manager";
+// UI로 전송되는 메시지 타입 상수들
+const MSG_TO_UI_TYPE_PLUGIN_EVENT: &str = "plugin_event";     // 플러그인 이벤트
+const MSG_TO_UI_TYPE_PLUGIN_RELOAD: &str = "plugin_reload";   // 플러그인 재로드
+const MSG_TO_UI_TYPE_PLUGIN_OPTION: &str = "plugin_option";   // 플러그인 옵션
+const MSG_TO_UI_TYPE_PLUGIN_MANAGER: &str = "plugin_manager"; // 플러그인 관리자
 
-pub const EVENT_ON_CONN_CLIENT: &str = "on_conn_client";
-pub const EVENT_ON_CONN_SERVER: &str = "on_conn_server";
-pub const EVENT_ON_CONN_CLOSE_CLIENT: &str = "on_conn_close_client";
-pub const EVENT_ON_CONN_CLOSE_SERVER: &str = "on_conn_close_server";
+// 플러그인 이벤트 상수들
+pub const EVENT_ON_CONN_CLIENT: &str = "on_conn_client";             // 클라이언트 연결 시
+pub const EVENT_ON_CONN_SERVER: &str = "on_conn_server";             // 서버 연결 시
+pub const EVENT_ON_CONN_CLOSE_CLIENT: &str = "on_conn_close_client"; // 클라이언트 연결 종료 시
+pub const EVENT_ON_CONN_CLOSE_SERVER: &str = "on_conn_close_server"; // 서버 연결 종료 시
 
+// 로컬 플러그인 디렉토리
 static PLUGIN_SOURCE_LOCAL_DIR: &str = "plugins";
 
+// 설정 모듈 공개 내보내기
 pub use config::{ManagerConfig, PeerConfig, SharedConfig};
 
-/// Common plugin return.
+/// 플러그인 공통 반환 값 구조체
 ///
-/// [Note]
-/// The msg must be nullptr if code is errno::ERR_SUCCESS.
-/// The msg must be freed by caller if code is not errno::ERR_SUCCESS.
+/// 주의사항:
+/// - code가 errno::ERR_SUCCESS이면 msg는 nullptr이어야 함
+/// - code가 errno::ERR_SUCCESS가 아니면 msg는 호출자가 해제해야 함
 #[repr(C)]
 #[derive(Debug)]
 pub struct PluginReturn {
+    /// 반환 코드
     pub code: c_int,
+    /// 에러 메시지 (C 문자열)
     pub msg: *const c_char,
 }
 
+/// PluginReturn 구현
 impl PluginReturn {
+    /// 성공 반환값 생성
     pub fn success() -> Self {
         Self {
             code: errno::ERR_SUCCESS,
@@ -62,11 +75,13 @@ impl PluginReturn {
         }
     }
 
+    /// 성공 여부 확인
     #[inline]
     pub fn is_success(&self) -> bool {
         self.code == errno::ERR_SUCCESS
     }
 
+    /// 에러 코드와 메시지로 반환값 생성
     pub fn new(code: c_int, msg: &str) -> Self {
         Self {
             code,
@@ -74,6 +89,7 @@ impl PluginReturn {
         }
     }
 
+    /// 코드와 메시지를 튜플로 추출
     pub fn get_code_msg(&mut self, id: &str) -> (i32, String) {
         if self.is_success() {
             (self.code, "".to_owned())

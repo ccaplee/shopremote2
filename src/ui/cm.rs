@@ -7,12 +7,16 @@ use sciter::{make_args, Element, Value, HELEMENT};
 use std::sync::Mutex;
 use std::{ops::Deref, sync::Arc};
 
+// 연결 관리자 UI 숨김 상태 (전역)
 lazy_static::lazy_static! {
     pub static ref HIDE_CM: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
 }
 
+/// Sciter UI 요소와 상호작용하는 핸들러
+/// UI 업데이트 메서드를 JavaScript 함수 호출로 변환
 #[derive(Clone, Default)]
 pub struct SciterHandler {
+    // Sciter UI 루트 요소 참조
     pub element: Arc<Mutex<Option<Element>>>,
 }
 

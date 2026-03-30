@@ -1,4 +1,5 @@
-//! windows implementation
+//! Windows 플랫폼의 클립보드 구현
+//! FreeRDP 라이브러리를 기반으로 Windows 클립보드 파일 전송 기능을 제공합니다.
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 #![allow(unused_variables)]
@@ -17,16 +18,16 @@ use std::{
     result::Result,
 };
 
-// only used error code will be recorded here
-/// success
+// 실제 사용되는 에러 코드만 기록합니다
+/// 성공
 const CHANNEL_RC_OK: u32 = 0;
-/// error code from WinError.h
-/// success
+/// WinError.h에서 정의된 에러 코드
+/// 성공
 const ERROR_SUCCESS: u32 = 0;
-/// allocation failure
+/// 메모리 할당 실패
 const CHANNEL_RC_NO_MEMORY: u32 = 12;
-/// error code from WinError.h
-/// used by FreeRDP to represent errors.
+/// WinError.h에서 정의된 에러 코드
+/// FreeRDP에서 에러를 표현하는 데 사용됩니다
 const ERROR_INTERNAL_ERROR: u32 = 0x54F;
 
 pub type size_t = ::std::os::raw::c_ulonglong;
@@ -617,10 +618,11 @@ impl CliprdrServiceContext for CliprdrClientContext {
     fn cancel(&mut self) {}
 }
 
+/// FreeRDP의 반환 코드를 Rust 에러 타입으로 변환합니다.
 fn ret_to_result(ret: u32) -> Result<(), CliprdrError> {
     match ret {
         #[allow(unreachable_patterns)]
-        // CHANNEL_RC_OK is unreachable, but ignore it
+        // CHANNEL_RC_OK는 도달 불가능하지만 무시합니다
         ERROR_SUCCESS | CHANNEL_RC_OK => Ok(()),
         CHANNEL_RC_NO_MEMORY => Err(CliprdrError::CliprdrOutOfMemory),
         ERROR_INTERNAL_ERROR => Err(CliprdrError::ClipboardInternalError),
@@ -628,10 +630,13 @@ fn ret_to_result(ret: u32) -> Result<(), CliprdrError> {
     }
 }
 
+/// 클립보드를 비웁니다. Windows native API를 호출합니다.
 pub fn empty_clipboard(context: &mut CliprdrClientContext, conn_id: i32) -> bool {
     unsafe { TRUE == empty_cliprdr(context, conn_id as u32) }
 }
 
+/// 원격 클라이언트로부터 받은 클립보드 메시지를 처리합니다.
+/// Windows 클립보드에 메시지의 내용을 반영하고 응답을 생성합니다.
 pub fn server_clip_file(
     context: &mut CliprdrClientContext,
     conn_id: i32,
@@ -966,6 +971,12 @@ pub fn server_file_contents_response(
     }
 }
 
+/// Windows 플랫폼에서 클립보드 컨텍스트를 생성합니다.
+/// FreeRDP 라이브러리를 초기화하고 여러 콜백 함수를 등록합니다.
+/// # 인자
+/// - `enable_files`: 파일 복사/붙여넣기 기능을 활성화할 지 여부
+/// - `enable_others`: 기타 클립보드 기능을 활성화할 지 여부
+/// - `response_wait_timeout_secs`: 클립보드 응답을 기다릴 최대 시간(초)
 pub fn create_cliprdr_context(
     enable_files: bool,
     enable_others: bool,
@@ -986,6 +997,7 @@ pub fn create_cliprdr_context(
     )?)
 }
 
+/// FreeRDP에서 호출하는 콜백 함수입니다. 클립보드 작업의 상태 알림을 받습니다.
 extern "C" fn notify_callback(conn_id: UINT32, msg: *const NOTIFICATION_MESSAGE) -> UINT {
     log::debug!("notify_callback called");
     let data = unsafe {

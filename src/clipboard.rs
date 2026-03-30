@@ -6,34 +6,42 @@ use std::{
     time::Duration,
 };
 
+/// 클립보드 서비스의 이름
 pub const CLIPBOARD_NAME: &'static str = "clipboard";
+/// 파일 클립보드 서비스의 이름 (Unix 파일 복사 붙여넣기 기능용)
 #[cfg(feature = "unix-file-copy-paste")]
 pub const FILE_CLIPBOARD_NAME: &'static str = "file-clipboard";
+/// 클립보드 변경 감지 간격 (밀리초)
 pub const CLIPBOARD_INTERVAL: u64 = 333;
 
-// This format is used to store the flag in the clipboard.
+/// RustDesk 클립보드 소유자 식별을 위한 특수 포맷
+/// 호스트와 클라이언트의 클립보드 소유권을 구분하는 데 사용됩니다
 const RUSTDESK_CLIPBOARD_OWNER_FORMAT: &'static str = "dyn.com.rustdesk.owner";
 
-// Add special format for Excel XML Spreadsheet
+/// Excel XML 스프레드시트 포맷 지원
 const CLIPBOARD_FORMAT_EXCEL_XML_SPREADSHEET: &'static str = "XML Spreadsheet";
 
 #[cfg(not(target_os = "android"))]
 lazy_static::lazy_static! {
+    /// Arboard 라이브러리의 스레드 안전성을 위한 뮤텍스
     static ref ARBOARD_MTX: Arc<Mutex<()>> = Arc::new(Mutex::new(()));
-    // cache the clipboard msg
+    /// 마지막으로 수신한 클립보드 메시지를 캐시합니다
     static ref LAST_MULTI_CLIPBOARDS: Arc<Mutex<MultiClipboards>> = Arc::new(Mutex::new(MultiClipboards::new()));
-    // For updating in server and getting content in cm.
-    // Clipboard on Linux is "server--clients" mode.
-    // The clipboard content is owned by the server and passed to the clients when requested.
-    // Plain text is the only exception, it does not require the server to be present.
+    /// 클립보드 컨텍스트: 서버-클라이언트 모드에서 클립보드 콘텐츠를 관리합니다
+    /// Linux의 클립보드는 "서버-클라이언트" 모드로 동작하며, 클립보드 콘텐츠는 서버가 소유하고
+    /// 클라이언트의 요청 시 전달됩니다. 일반 텍스트는 예외이며 서버 없이도 동작합니다.
     static ref CLIPBOARD_CTX: Arc<Mutex<Option<ClipboardContext>>> = Arc::new(Mutex::new(None));
 }
 
+/// 클립보드 읽기 최대 재시도 횟수
 #[cfg(not(target_os = "android"))]
 const CLIPBOARD_GET_MAX_RETRY: usize = 3;
+/// 클립보드 읽기 재시도 간격 (밀리초)
 #[cfg(not(target_os = "android"))]
 const CLIPBOARD_GET_RETRY_INTERVAL_DUR: Duration = Duration::from_millis(33);
 
+/// 지원하는 클립보드 포맷 목록
+/// 텍스트, HTML, RTF, 이미지(RGBA/PNG/SVG), 파일 URL, Excel 형식 등을 포함합니다
 #[cfg(not(target_os = "android"))]
 const SUPPORTED_FORMATS: &[ClipboardFormat] = &[
     ClipboardFormat::Text,
@@ -48,6 +56,12 @@ const SUPPORTED_FORMATS: &[ClipboardFormat] = &[
     ClipboardFormat::Special(RUSTDESK_CLIPBOARD_OWNER_FORMAT),
 ];
 
+/// 클립보드 변경 사항을 확인하고 Message로 변환합니다
+///
+/// # 인자
+/// * `ctx` - 클립보드 컨텍스트 (없으면 생성)
+/// * `side` - 클립보드 쪽 (호스트 또는 클라이언트)
+/// * `force` - 강제로 읽을지 여부 (소유권 무시)
 #[cfg(not(target_os = "android"))]
 pub fn check_clipboard(
     ctx: &mut Option<ClipboardContext>,
@@ -64,6 +78,7 @@ pub fn check_clipboard(
                 let mut msg = Message::new();
                 let clipboards = proto::create_multi_clipboards(content);
                 msg.set_multi_clipboards(clipboards.clone());
+                // 마지막 클립보드 상태 업데이트
                 *LAST_MULTI_CLIPBOARDS.lock().unwrap() = clipboards;
                 return Some(msg);
             }
@@ -238,14 +253,19 @@ pub fn update_clipboard(multi_clipboards: Vec<Clipboard>, side: ClipboardSide) {
     });
 }
 
+/// Arboard 라이브러리를 래핑한 클립보드 컨텍스트
+/// 크로스 플랫폼 클립보드 접근을 제공합니다
 #[cfg(not(target_os = "android"))]
 pub struct ClipboardContext {
+    /// 내부 Arboard 클립보드 객체
     inner: arboard::Clipboard,
 }
 
 #[cfg(not(target_os = "android"))]
 #[allow(unreachable_code)]
 impl ClipboardContext {
+    /// 새로운 클립보드 컨텍스트를 생성합니다
+    /// Linux에서는 X server/Wayland 연결 실패를 대비하여 최대 5회까지 재시도합니다
     pub fn new() -> ResultType<ClipboardContext> {
         let board;
         #[cfg(not(target_os = "linux"))]
@@ -256,9 +276,8 @@ impl ClipboardContext {
         {
             let mut i = 1;
             loop {
-                // Try 5 times to create clipboard
-                // Arboard::new() connect to X server or Wayland compositor, which should be OK most times
-                // But sometimes, the connection may fail, so we retry here.
+                // Linux에서 X server나 Wayland compositor 연결 실패를 대비하여 최대 5회 재시도
+                // 대부분의 경우 정상이지만 간헐적으로 연결이 실패할 수 있습니다
                 match arboard::Clipboard::new() {
                     Ok(x) => {
                         board = x;
@@ -279,16 +298,14 @@ impl ClipboardContext {
         Ok(ClipboardContext { inner: board })
     }
 
+    /// 지정된 포맷의 클립보드 데이터를 읽습니다
+    /// Windows에서 발생할 수 있는 클립보드 점유(occupied) 에러에 대해 재시도합니다
     fn get_formats(&mut self, formats: &[ClipboardFormat]) -> ResultType<Vec<ClipboardData>> {
-        // If there're multiple threads or processes trying to access the clipboard at the same time,
-        // the previous clipboard owner will fail to access the clipboard.
-        // `GetLastError()` will return `ERROR_CLIPBOARD_NOT_OPEN` (OSError(1418): Thread does not have a clipboard open) at this time.
-        // See https://github.com/rustdesk-org/arboard/blob/747ab2d9b40a5c9c5102051cf3b0bb38b4845e60/src/platform/windows.rs#L34
-        //
-        // This is a common case on Windows, so we retry here.
-        // Related issues:
-        // https://github.com/rustdesk/rustdesk/issues/9263
-        // https://github.com/rustdesk/rustdesk/issues/9222#issuecomment-2329233175
+        // Windows에서 여러 스레드/프로세스가 동시에 클립보드에 접근하려 하면,
+        // 이전 클립보드 소유자가 접근 실패할 수 있습니다.
+        // GetLastError()는 ERROR_CLIPBOARD_NOT_OPEN (OSError 1418)을 반환합니다.
+        // https://github.com/rustdesk-org/arboard/blob/747ab2d9b40a5c9c5102051cf3b0bb38b4845e60/src/platform/windows.rs#L34
+        // Windows에서는 일반적인 경우이므로 재시도합니다.
         for i in 0..CLIPBOARD_GET_MAX_RETRY {
             match self.inner.get_formats(formats) {
                 Ok(data) => {
@@ -312,10 +329,11 @@ impl ClipboardContext {
         bail!("Failed to get clipboard formats, clipboard is occupied, {CLIPBOARD_GET_MAX_RETRY} retries failed");
     }
 
+    /// 지원하는 모든 포맷의 클립보드 데이터를 읽습니다
     pub fn get(&mut self, side: ClipboardSide, force: bool) -> ResultType<Vec<ClipboardData>> {
         let data = self.get_formats_filter(SUPPORTED_FORMATS, side, force)?;
-        // We have a separate service named `file-clipboard` to handle file copy-paste.
-        // We need to read the file urls because file copy may set the other clipboard formats such as text.
+        // 파일 복사 붙여넣기는 별도의 'file-clipboard' 서비스로 처리합니다.
+        // 파일 복사 시 텍스트 등 다른 포맷의 클립보드도 설정될 수 있으므로 필터링합니다.
         #[cfg(feature = "unix-file-copy-paste")]
         {
             if data.iter().any(|c| matches!(c, ClipboardData::FileUrl(_))) {
@@ -499,15 +517,18 @@ pub fn get_current_clipboard_msg(
     }
 }
 
+/// 클립보드가 어느 쪽에 속하는지 구분하는 열거형
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum ClipboardSide {
+    /// 호스트 클립보드
     Host,
+    /// 클라이언트 클립보드
     Client,
 }
 
 impl ClipboardSide {
-    // 01: the clipboard is owned by the host
-    // 10: the clipboard is owned by the client
+    /// 클립보드 소유자 식별자를 반환합니다
+    /// 호스트: 0b01, 클라이언트: 0b10
     fn get_owner_data(&self) -> Vec<u8> {
         match self {
             ClipboardSide::Host => vec![0b01],
@@ -515,6 +536,7 @@ impl ClipboardSide {
         }
     }
 
+    /// 주어진 데이터가 이 쪽의 소유인지 확인합니다
     fn is_owner(&self, data: &[u8]) -> bool {
         if data.len() == 0 {
             return false;
@@ -747,9 +769,11 @@ pub fn get_clipboards_msg(client: bool) -> Option<Message> {
     Some(msg)
 }
 
-// We need this mod to notify multiple subscribers when the clipboard changes.
-// Because only one clipboard master(listener) can trigger the clipboard change event multiple listeners are created on Linux(x11).
-// https://github.com/rustdesk-org/clipboard-master/blob/4fb62e5b62fb6350d82b571ec7ba94b3cd466695/src/master/x11.rs#L226
+/// 클립보드 변경 감지 모듈
+/// 클립보드가 변경될 때 여러 구독자에게 알림을 보냅니다.
+/// Linux(X11)에서는 한 개의 마스터 리스너만 클립보드 이벤트를 감지할 수 있으므로
+/// 여러 리스너를 지원하기 위해 이 모듈을 사용합니다.
+/// https://github.com/rustdesk-org/clipboard-master/blob/4fb62e5b62fb6350d82b571ec7ba94b3cd466695/src/master/x11.rs#L226
 #[cfg(not(target_os = "android"))]
 pub mod clipboard_listener {
     use clipboard_master::{CallbackResult, ClipboardHandler, Master, Shutdown};
@@ -762,6 +786,7 @@ pub mod clipboard_listener {
         thread::JoinHandle,
     };
 
+    /// 전역 클립보드 리스너 인스턴스
     lazy_static::lazy_static! {
         pub static ref CLIPBOARD_LISTENER: Arc<Mutex<ClipboardListener>> = Default::default();
     }

@@ -143,14 +143,21 @@ pub(crate) struct ClientClipboardContext {
 }
 
 /// Client of the remote desktop.
+/// 원격 서버에 접속하는 클라이언트
+/// 원격 데스크톱/카메라 보기, 파일 전송, 원격 제어 등의 기능을 담당한다.
 pub struct Client;
 
+/// 클립보드 상태 추적 구조체
+/// 텍스트 및 파일 클립보드의 필요 여부와 실행 상태를 관리한다.
 #[cfg(not(target_os = "ios"))]
 struct ClipboardState {
     #[cfg(feature = "flutter")]
+    // 텍스트 클립보드가 필요한지 여부
     is_text_required: bool,
     #[cfg(all(feature = "flutter", feature = "unix-file-copy-paste"))]
+    // 파일 클립보드가 필요한지 여부 (Unix 파일 복사/붙여넣기 지원)
     is_file_required: bool,
+    // 클립보드 리스너 실행 상태
     running: bool,
 }
 
@@ -169,15 +176,27 @@ lazy_static::lazy_static! {
     static ref CLIPBOARD_STATE: Arc<Mutex<ClipboardState>> = Arc::new(Mutex::new(ClipboardState::new()));
 }
 
+// 공개 서버 설정
 const PUBLIC_SERVER: &str = "public";
 
+/// 특정 키의 현재 상태(눌려있음/떨어져있음)를 조회하는 함수
+/// iOS 및 Android에서는 사용 불가능하다.
+///
+/// # 인자
+/// * `key` - 조회할 키 (enigo::Key)
+///
+/// # 반환
+/// 키가 눌려있으면 true, 아니면 false
+/// macOS에서 NumLock은 항상 true
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn get_key_state(key: enigo::Key) -> bool {
     use enigo::KeyboardControllable;
     #[cfg(target_os = "macos")]
+    // macOS는 NumLock을 지원하지 않으므로 항상 true 반환
     if key == enigo::Key::NumLock {
         return true;
     }
+    // ENIGO를 사용하여 키 상태 조회
     ENIGO.lock().unwrap().get_key_state(key)
 }
 
@@ -1171,7 +1190,8 @@ impl ClientClipboardHandler {
     }
 }
 
-/// Audio handler for the [`Client`].
+/// 클라이언트의 음성 데이터 처리 핸들러
+/// 원격 사용자로부터 받은 음성 스트림을 로컬 오디오 장치에 재생하는 기능을 담당한다.
 #[derive(Default)]
 pub struct AudioHandler {
     audio_decoder: Option<(AudioDecoder, Vec<f32>)>,
@@ -1533,9 +1553,12 @@ impl AudioHandler {
     }
 }
 
-/// Video handler for the [`Client`].
+/// 클라이언트의 비디오 데이터 처리 핸들러
+/// 원격 사용자로부터 받은 비디오 스트림을 디코딩하고 이미지 형식으로 변환한다.
 pub struct VideoHandler {
+    // 비디오 코덱 디코더
     decoder: Decoder,
+    // RGB 형식의 이미지 버퍼
     pub rgb: ImageRgb,
     pub texture: ImageTexture,
     recorder: Arc<Mutex<Option<Recorder>>>,
@@ -1724,15 +1747,26 @@ struct ConnToken {
 
 /// Login config handler for [`Client`].
 #[derive(Default)]
+/// 로그인 및 연결 설정을 관리하는 핸들러
+/// 인증 정보, 연결 타입, 포트 포워딩, 피어 설정 등을 저장한다.
 pub struct LoginConfigHandler {
+    // 원격 피어 ID
     id: String,
+    // 연결 타입 (데스크톱, 파일 전송, 터미널 등)
     pub conn_type: ConnType,
+    // 터미널 관리자 권한 여부
     pub is_terminal_admin: bool,
+    // 비밀번호 해시 정보
     hash: Hash,
-    password: Vec<u8>, // remember password for reconnect
+    // 재연결을 위해 저장된 비밀번호
+    password: Vec<u8>,
+    // 비밀번호 저장 여부
     pub remember: bool,
+    // 원격 피어 설정
     config: PeerConfig,
+    // 포트 포워딩 (host, port)
     pub port_forward: (String, i32),
+    // 원격 시스템의 프로토콜 버전
     pub version: i64,
     features: Option<Features>,
     pub session_id: u64, // used for local <-> server communication

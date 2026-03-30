@@ -15,6 +15,10 @@ use hbb_common::{
     ResultType, Stream,
 };
 
+/// RDP 세션을 실행합니다.
+/// 
+/// 로컬호스트의 지정된 포트에서 원격 데스크톱 연결을 설정합니다.
+/// Windows 자격증명 관리자에 저장된 자격증명을 사용합니다.
 fn run_rdp(port: u16) {
     std::process::Command::new("cmdkey")
         .arg("/delete:localhost")
@@ -42,7 +46,11 @@ fn run_rdp(port: u16) {
         .ok();
 }
 
-pub async fn listen(
+/// 포트 포워딩 리스너를 시작합니다.
+/// 
+/// 로컬 포트에서 들어오는 연결을 받아서 원격 호스트로 포워딩합니다.
+/// RDP 모드에서는 RDP 클라이언트를 자동으로 실행합니다.
+pub async fn listen()
     id: String,
     password: String,
     port: i32,

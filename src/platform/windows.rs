@@ -1,3 +1,6 @@
+// Windows 플랫폼 관련 기능을 구현하는 모듈
+// 디스플레이, 커서, 프로세스, 서비스, 설치/제거, 권한 등 Windows 시스템 수준의 작업을 처리합니다.
+
 use super::{CursorData, ResultType};
 use crate::{
     common::PORTABLE_APPNAME_RUNTIME_ENV_KEY,
@@ -88,21 +91,32 @@ use windows_service::{
 };
 use winreg::{enums::*, RegKey};
 
-pub const FLUTTER_RUNNER_WIN32_WINDOW_CLASS: &'static str = "FLUTTER_RUNNER_WIN32_WINDOW"; // main window, install window
+// Flutter 메인 윈도우 클래스 이름 (설치 창도 포함)
+pub const FLUTTER_RUNNER_WIN32_WINDOW_CLASS: &'static str = "FLUTTER_RUNNER_WIN32_WINDOW";
+// Windows 파일 탐색기 실행 파일명
 pub const EXPLORER_EXE: &'static str = "explorer.exe";
+// Foreground 윈도우 설정 작업 이름
 pub const SET_FOREGROUND_WINDOW: &'static str = "SET_FOREGROUND_WINDOW";
 
+// 설치 옵션 레지스트리 키 - 데스크톱 바로가기 생성 여부
 const REG_NAME_INSTALL_DESKTOPSHORTCUTS: &str = "DESKTOPSHORTCUTS";
+// 설치 옵션 레지스트리 키 - 시작 메뉴 바로가기 생성 여부
 const REG_NAME_INSTALL_STARTMENUSHORTCUTS: &str = "STARTMENUSHORTCUTS";
+// 설치 옵션 레지스트리 키 - 프린터 설치 여부
 pub const REG_NAME_INSTALL_PRINTER: &str = "PRINTER";
 
+// 현재 포커스된 윈도우가 위치한 디스플레이의 인덱스를 반환합니다.
+// Foreground 윈도우의 중심 좌표를 계산하여 어느 디스플레이에 속하는지 판단합니다.
 pub fn get_focused_display(displays: Vec<DisplayInfo>) -> Option<usize> {
     unsafe {
+        // Foreground에 있는 윈도우의 핸들을 얻습니다.
         let hwnd = GetForegroundWindow();
         let mut rect: RECT = mem::zeroed();
+        // 윈도우의 화면 좌표를 얻습니다.
         if GetWindowRect(hwnd, &mut rect as *mut RECT) == 0 {
             return None;
         }
+        // 윈도우의 중심 좌표를 계산하고 해당 디스플레이를 찾습니다.
         displays.iter().position(|display| {
             let center_x = rect.left + (rect.right - rect.left) / 2;
             let center_y = rect.top + (rect.bottom - rect.top) / 2;
@@ -114,9 +128,12 @@ pub fn get_focused_display(displays: Vec<DisplayInfo>) -> Option<usize> {
     }
 }
 
+// 현재 마우스 커서의 위치를 조회합니다.
+// 성공 시 (x, y) 좌표를 반환하고, 실패하면 None을 반환합니다.
 pub fn get_cursor_pos() -> Option<(i32, i32)> {
     unsafe {
         let mut out = mem::MaybeUninit::<POINT>::uninit();
+        // Windows API GetCursorPos를 호출하여 커서 위치를 얻습니다.
         if GetCursorPos(out.as_mut_ptr()) == FALSE {
             return None;
         }
@@ -125,6 +142,8 @@ pub fn get_cursor_pos() -> Option<(i32, i32)> {
     }
 }
 
+// 마우스 커서 위치를 지정된 좌표로 설정합니다.
+// 성공하면 true, 실패하면 false를 반환합니다.
 pub fn set_cursor_pos(x: i32, y: i32) -> bool {
     unsafe {
         if SetCursorPos(x, y) == FALSE {
@@ -136,7 +155,9 @@ pub fn set_cursor_pos(x: i32, y: i32) -> bool {
     }
 }
 
-/// Clip cursor to a rectangle. Pass None to unclip.
+// 마우스 커서를 지정된 사각형 영역 내로 제한합니다.
+// None을 전달하면 제한을 해제합니다. (Unclip)
+// 성공하면 true, 실패하면 false를 반환합니다.
 pub fn clip_cursor(rect: Option<(i32, i32, i32, i32)>) -> bool {
     unsafe {
         let result = match rect {
@@ -160,16 +181,21 @@ pub fn clip_cursor(rect: Option<(i32, i32, i32, i32)>) -> bool {
     }
 }
 
+// 입력 캐시를 리셋합니다. (현재는 구현되지 않음)
 pub fn reset_input_cache() {}
 
+// 현재 표시되고 있는 커서의 핸들을 조회합니다.
+// 커서가 보이는 경우 핸들 값을, 보이지 않는 경우 None을 반환합니다.
 pub fn get_cursor() -> ResultType<Option<u64>> {
     unsafe {
         #[allow(invalid_value)]
         let mut ci: CURSORINFO = mem::MaybeUninit::uninit().assume_init();
         ci.cbSize = std::mem::size_of::<CURSORINFO>() as _;
+        // 플랫폼 서비스에서 커서 정보를 조회합니다.
         if crate::portable_service::client::get_cursor_info(&mut ci) == FALSE {
             return Err(io::Error::last_os_error().into());
         }
+        // CURSOR_SHOWING 플래그 확인으로 커서 표시 여부를 판단합니다.
         if ci.flags & CURSOR_SHOWING == 0 {
             Ok(None)
         } else {
@@ -178,13 +204,18 @@ pub fn get_cursor() -> ResultType<Option<u64>> {
     }
 }
 
+// 커서/아이콘 정보를 나타내는 ICONINFO 구조체를 래핑하고 자동 리소스 관리를 제공합니다.
+// Drop 트레이트를 구현하여 비트맵 리소스를 자동으로 정리합니다. (RAII 패턴)
 struct IconInfo(ICONINFO);
 
 impl IconInfo {
+    // 주어진 커서 핸들로부터 아이콘 정보를 생성합니다.
+    // 마스크 비트맵이 NULL이 아닌지 검증합니다.
     fn new(icon: HICON) -> ResultType<Self> {
         unsafe {
             #[allow(invalid_value)]
             let mut ii = mem::MaybeUninit::uninit().assume_init();
+            // GetIconInfo를 호출하여 커서의 세부 정보를 얻습니다.
             if GetIconInfo(icon, &mut ii) == FALSE {
                 Err(io::Error::last_os_error().into())
             } else {
@@ -197,17 +228,22 @@ impl IconInfo {
         }
     }
 
+    // 커서가 컬러 비트맵을 가지고 있는지 확인합니다.
+    // (흑백 커서는 마스크 비트맵만 있음)
     fn is_color(&self) -> bool {
         !self.0.hbmColor.is_null()
     }
 }
 
+// IconInfo 스코프를 벗어날 때 할당된 비트맵 리소스를 해제합니다.
 impl Drop for IconInfo {
     fn drop(&mut self) {
         unsafe {
+            // 컬러 비트맵 리소스를 해제합니다.
             if !self.0.hbmColor.is_null() {
                 DeleteObject(self.0.hbmColor as _);
             }
+            // 마스크 비트맵 리소스를 해제합니다.
             if !self.0.hbmMask.is_null() {
                 DeleteObject(self.0.hbmMask as _);
             }
@@ -215,8 +251,11 @@ impl Drop for IconInfo {
     }
 }
 
-// https://github.com/TurboVNC/tightvnc/blob/a235bae328c12fd1c3aed6f3f034a37a6ffbbd22/vnc_winsrc/winvnc/vncEncoder.cpp
-// https://github.com/TigerVNC/tigervnc/blob/master/win/rfb_win32/DeviceFrameBuffer.cxx
+// 커서 데이터를 이미지 형식으로 추출합니다.
+// 참고: TurboVNC, TigerVNC의 커서 처리 로직을 기반으로 구현됨
+// - https://github.com/TurboVNC/tightvnc/blob/a235bae328c12fd1c3aed6f3f034a37a6ffbbd22/vnc_winsrc/winvnc/vncEncoder.cpp
+// - https://github.com/TigerVNC/tigervnc/blob/master/win/rfb_win32/DeviceFrameBuffer.cxx
+// 커서의 크기, 핫스팟(클릭 포인트), RGBA 픽셀 데이터를 반환합니다.
 pub fn get_cursor_data(hcursor: u64) -> ResultType<CursorData> {
     unsafe {
         let mut ii = IconInfo::new(hcursor as _)?;
@@ -295,10 +334,13 @@ pub fn get_cursor_data(hcursor: u64) -> ResultType<CursorData> {
     }
 }
 
+// 비트맵 핸들로부터 BITMAP 구조체 정보를 추출합니다.
+// 커서는 1비트 평면 비트맵이어야 합니다. (마스크 비트맵)
 #[inline]
 fn get_bitmap(handle: HBITMAP) -> ResultType<BITMAP> {
     unsafe {
         let mut bm: BITMAP = mem::zeroed();
+        // GetObjectA를 호출하여 비트맵 정보를 얻습니다.
         if GetObjectA(
             handle as _,
             std::mem::size_of::<BITMAP>() as _,
@@ -307,9 +349,11 @@ fn get_bitmap(handle: HBITMAP) -> ResultType<BITMAP> {
         {
             return Err(io::Error::last_os_error().into());
         }
+        // 커서는 단일 평면 비트맵이어야 합니다.
         if bm.bmPlanes != 1 {
             bail!("Unsupported multi-plane cursor");
         }
+        // 커서 마스크는 1비트 픽셀이어야 합니다.
         if bm.bmBitsPixel != 1 {
             bail!("Unsupported cursor mask format");
         }
@@ -317,9 +361,12 @@ fn get_bitmap(handle: HBITMAP) -> ResultType<BITMAP> {
     }
 }
 
+// 화면 그리기 컨텍스트(DC - Device Context)를 래핑하고 자동 리소스 관리를 제공합니다.
+// 스코프를 벗어날 때 자동으로 DC를 해제합니다. (RAII 패턴)
 struct DC(HDC);
 
 impl DC {
+    // 주 디스플레이의 그리기 컨텍스트를 생성합니다.
     fn new() -> ResultType<Self> {
         unsafe {
             let dc = GetDC(0 as _);
@@ -331,6 +378,7 @@ impl DC {
     }
 }
 
+// DC 스코프를 벗어날 때 그리기 컨텍스트 리소스를 해제합니다.
 impl Drop for DC {
     fn drop(&mut self) {
         unsafe {
@@ -341,9 +389,12 @@ impl Drop for DC {
     }
 }
 
+// 기존 DC와 호환되는 메모리 그리기 컨텍스트를 나타냅니다.
+// 메모리 기반의 그리기 작업에 사용됩니다.
 struct CompatibleDC(HDC);
 
 impl CompatibleDC {
+    // 주어진 DC와 호환되는 메모리 DC를 생성합니다.
     fn new(existing: HDC) -> ResultType<Self> {
         unsafe {
             let dc = CreateCompatibleDC(existing);
@@ -355,6 +406,7 @@ impl CompatibleDC {
     }
 }
 
+// CompatibleDC 스코프를 벗어날 때 메모리 DC를 삭제합니다.
 impl Drop for CompatibleDC {
     fn drop(&mut self) {
         unsafe {
@@ -365,9 +417,12 @@ impl Drop for CompatibleDC {
     }
 }
 
+// DC에 비트맵을 선택하여 픽셀 데이터에 접근할 수 있도록 합니다.
+// 스코프를 벗어날 때 이전 비트맵으로 복원합니다. (RAII 패턴)
 struct BitmapDC(CompatibleDC, HBITMAP);
 
 impl BitmapDC {
+    // DC에 비트맵을 선택하고 이전 비트맵을 저장합니다.
     fn new(hdc: HDC, hbitmap: HBITMAP) -> ResultType<Self> {
         unsafe {
             let dc = CompatibleDC::new(hdc)?;
@@ -379,11 +434,13 @@ impl BitmapDC {
         }
     }
 
+    // 현재 선택된 DC를 반환합니다.
     fn dc(&self) -> HDC {
         (self.0).0
     }
 }
 
+// BitmapDC 스코프를 벗어날 때 이전 비트맵을 DC에 복원합니다.
 impl Drop for BitmapDC {
     fn drop(&mut self) {
         unsafe {
@@ -394,6 +451,8 @@ impl Drop for BitmapDC {
     }
 }
 
+// 컬러 커서의 RGBA 픽셀 데이터를 추출합니다.
+// 비트맵 DC를 생성하여 GetDIBits를 통해 픽셀 데이터를 읽습니다.
 #[inline]
 fn get_rich_cursor_data(
     hbm_color: HBITMAP,
@@ -404,6 +463,7 @@ fn get_rich_cursor_data(
     unsafe {
         let dc = DC::new()?;
         let bitmap_dc = BitmapDC::new(dc.0, hbm_color)?;
+        // 비트맵의 픽셀 데이터를 버퍼에 복사합니다.
         if get_di_bits(out.as_mut_ptr(), bitmap_dc.dc(), hbm_color, width, height) > 0 {
             bail!("Failed to get di bits: {}", io::Error::last_os_error());
         }
@@ -411,6 +471,10 @@ fn get_rich_cursor_data(
     Ok(())
 }
 
+// 커서 마스크를 수정하고 정규화합니다.
+// 마스크 비트와 컬러 비트를 기반으로 알파 채널을 설정합니다.
+// TigerVNC와 noVNC의 로직을 참고하여 크로스 플랫폼 호환성을 보장합니다.
+// 아웃라인이 필요한 경우 true를 반환합니다.
 fn fix_cursor_mask(
     mbits: &mut Vec<u8>,
     cbits: &mut Vec<u8>,
@@ -503,14 +567,19 @@ fn fix_cursor_mask(
     return true;
 }
 
+// Windows 서비스 메인 함수 선언 (FFI 인터페이스)
 define_windows_service!(ffi_service_main, service_main);
 
+// Windows 서비스 프로세스의 메인 함수
+// arguments: 서비스 시작 시 전달된 명령 인자
 fn service_main(arguments: Vec<OsString>) {
     if let Err(e) = run_service(arguments) {
         log::error!("run_service failed: {}", e);
     }
 }
 
+// 애플리케이션을 Windows 서비스로 시작합니다.
+// 서비스 디스패처에 의해 관리됩니다.
 pub fn start_os_service() {
     if let Err(e) =
         windows_service::service_dispatcher::start(crate::get_app_name(), ffi_service_main)
@@ -519,11 +588,25 @@ pub fn start_os_service() {
     }
 }
 
+// 이 애플리케이션의 Windows 서비스 타입
+// OWN_PROCESS: 서비스가 자신의 독립적인 프로세스에서 실행됨
 const SERVICE_TYPE: ServiceType = ServiceType::OWN_PROCESS;
 
+// C/C++ 코드로 구현된 외부 Windows API 함수들
+// 이들은 네이티브 라이브러리에서 링크됨
 extern "C" {
+    // 현재 세션 ID를 조회합니다.
+    // rdp: RDP 세션을 포함할지 여부
     fn get_current_session(rdp: BOOL) -> DWORD;
+    // 지정된 세션이 잠겨있는지 확인합니다.
+    // include_rdp: RDP 세션의 잠금 상태도 확인할지 여부
     fn is_session_locked(include_rdp: BOOL) -> BOOL;
+    // 지정된 세션에서 프로세스를 시작합니다.
+    // cmd: 실행할 명령 (UTF-16 인코딩)
+    // session_id: 대상 세션 ID
+    // as_user: 세션 사용자 권한으로 실행할지 여부
+    // show: 윈도우 표시 여부
+    // token_pid: 생성된 프로세스의 PID (출력)
     fn LaunchProcessWin(
         cmd: *const u16,
         session_id: DWORD,
@@ -531,15 +614,24 @@ extern "C" {
         show: BOOL,
         token_pid: &mut DWORD,
     ) -> HANDLE;
+    // 지정된 세션의 사용자 토큰을 조회합니다.
+    // lphUserToken: 토큰 핸들 (출력)
+    // dwSessionId: 세션 ID
+    // as_user: 사용자 권한으로 토큰을 가져올지 여부
+    // token_pid: 토큰 관련 프로세스 PID (출력)
     fn GetSessionUserTokenWin(
         lphUserToken: LPHANDLE,
         dwSessionId: DWORD,
         as_user: BOOL,
         token_pid: &mut DWORD,
     ) -> BOOL;
+    // 입력용 데스크톱을 선택합니다.
     fn selectInputDesktop() -> BOOL;
+    // 입력용 데스크톱이 선택되었는지 확인합니다.
     fn inputDesktopSelected() -> BOOL;
+    // Windows 서버 운영체제인지 확인합니다.
     fn is_windows_server() -> BOOL;
+    // Windows 10 이상의 운영체제인지 확인합니다.
     fn is_windows_10_or_greater() -> BOOL;
     fn handleMask(
         out: *mut u8,
@@ -716,9 +808,11 @@ async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
     Ok(())
 }
 
+// 지정된 세션에서 서버 프로세스를 시작합니다.
+// 이전에 시작된 프로세스가 있다면 먼저 종료합니다.
 async fn launch_server(session_id: DWORD, close_first: bool) -> ResultType<HANDLE> {
     if close_first {
-        // in case started some elsewhere
+        // 다른 곳에서 시작된 프로세스가 있을 수 있으므로 먼저 종료합니다.
         send_close_async("").await.ok();
     }
     let cmd = format!(
@@ -728,14 +822,18 @@ async fn launch_server(session_id: DWORD, close_first: bool) -> ResultType<HANDL
     launch_privileged_process(session_id, &cmd)
 }
 
+// 지정된 세션에서 높은 권한으로 프로세스를 시작합니다.
+// 성공 시 프로세스 핸들을 반환합니다.
 pub fn launch_privileged_process(session_id: DWORD, cmd: &str) -> ResultType<HANDLE> {
     use std::os::windows::ffi::OsStrExt;
+    // 명령어를 UTF-16 인코딩된 와이드 문자열로 변환합니다.
     let wstr: Vec<u16> = std::ffi::OsStr::new(&cmd)
         .encode_wide()
         .chain(Some(0).into_iter())
         .collect();
     let wstr = wstr.as_ptr();
     let mut token_pid = 0;
+    // C 함수를 호출하여 권한 있는 프로세스를 시작합니다.
     let h = unsafe { LaunchProcessWin(wstr, session_id, FALSE, FALSE, &mut token_pid) };
     if h.is_null() {
         log::error!(
@@ -749,10 +847,15 @@ pub fn launch_privileged_process(session_id: DWORD, cmd: &str) -> ResultType<HAN
     Ok(h)
 }
 
+// 현재 사용자 권한으로 현재 실행 파일을 실행합니다.
 pub fn run_as_user(arg: Vec<&str>) -> ResultType<Option<std::process::Child>> {
     run_exe_in_cur_session(std::env::current_exe()?.to_str().unwrap_or(""), arg, false)
 }
 
+// 지정된 실행 파일을 현재 권한으로 직접 실행합니다.
+// exe: 실행할 프로그램 경로
+// arg: 명령 인자들
+// show: 윈도우 표시 여부
 pub fn run_exe_direct(
     exe: &str,
     arg: Vec<&str>,
@@ -763,6 +866,7 @@ pub fn run_exe_direct(
         cmd.arg(a);
     }
     if !show {
+        // 윈도우 없이 백그라운드에서 실행합니다.
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
     match cmd.spawn() {
@@ -771,17 +875,22 @@ pub fn run_exe_direct(
     }
 }
 
+// 현재 세션에서 프로세스를 실행합니다.
+// 관리자 권한이 있으면 해당 세션 컨텍스트에서 실행하고,
+// 없으면 현재 프로세스 권한으로 직접 실행합니다.
 pub fn run_exe_in_cur_session(
     exe: &str,
     arg: Vec<&str>,
     show: bool,
 ) -> ResultType<Option<std::process::Child>> {
     if is_root() {
+        // 관리자 권한이 있으면 현재 프로세스의 세션 ID를 얻습니다.
         let Some(session_id) = get_current_process_session_id() else {
             bail!("Failed to get current process session id");
         };
         run_exe_in_session(exe, arg, session_id, show)
     } else {
+        // 관리자 권한이 없으면 직접 실행합니다.
         run_exe_direct(exe, arg, show)
     }
 }
@@ -843,8 +952,12 @@ async fn send_close_async(postfix: &str) -> ResultType<()> {
     Ok(())
 }
 
-// https://docs.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
-// https://www.cnblogs.com/doutu/p/4892726.html
+// Secure Attention Sequence (SAS)를 보냅니다 (Ctrl+Alt+Del).
+// 이는 원격 제어 세션에서 Windows 로그인 화면이나 작업 관리자를 표시할 수 있습니다.
+// 참고:
+// - https://docs.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
+// - https://www.cnblogs.com/doutu/p/4892726.html
+// SoftwareSASGeneration 레지스트리 설정을 확인하고 필요시 임시로 수정합니다.
 pub fn send_sas() {
     #[link(name = "sas")]
     extern "system" {
@@ -853,7 +966,8 @@ pub fn send_sas() {
     unsafe {
         log::info!("SAS received");
 
-        // Check and temporarily set SoftwareSASGeneration if needed
+        // SoftwareSASGeneration 레지스트리 값을 확인하고 필요시 수정합니다.
+        // SendSAS가 작동하려면 이 값이 1 또는 3이어야 합니다.
         let mut original_value: Option<u32> = None;
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
 
@@ -861,19 +975,18 @@ pub fn send_sas() {
             "Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
             KEY_READ | KEY_WRITE,
         ) {
-            // Read current value
+            // 현재 값을 읽습니다.
             match policy_key.get_value::<u32, _>("SoftwareSASGeneration") {
                 Ok(value) => {
-                    /*
-                    - 0 = None (disabled)
-                    - 1 = Services
-                    - 2 = Ease of Access applications
-                    - 3 = Services and Ease of Access applications (Both)
-                                      */
+                    // 레지스트리 값의 의미:
+                    // - 0 = None (비활성화)
+                    // - 1 = 서비스
+                    // - 2 = 접근성 응용 프로그램
+                    // - 3 = 서비스와 접근성 응용 프로그램 (모두)
                     if value != 1 && value != 3 {
                         original_value = Some(value);
                         log::info!("SoftwareSASGeneration is {}, setting to 1", value);
-                        // Set to 1 for SendSAS to work
+                        // SendSAS가 작동하도록 1로 설정합니다.
                         if let Err(e) = policy_key.set_value("SoftwareSASGeneration", &1u32) {
                             log::error!("Failed to set SoftwareSASGeneration: {}", e);
                         }
@@ -884,8 +997,8 @@ pub fn send_sas() {
                         "SoftwareSASGeneration not found or error reading: {}, setting to 1",
                         e
                     );
-                    original_value = Some(0); // Mark that we need to restore (delete) it
-                                              // Create and set to 1
+                    original_value = Some(0); // 복원할 필요가 있음을 표시 (삭제)
+                    // 값을 생성하고 1로 설정합니다.
                     if let Err(e) = policy_key.set_value("SoftwareSASGeneration", &1u32) {
                         log::error!("Failed to set SoftwareSASGeneration: {}", e);
                     }
@@ -895,24 +1008,24 @@ pub fn send_sas() {
             log::error!("Failed to open registry key for SoftwareSASGeneration");
         }
 
-        // Send SAS
+        // SAS를 보냅니다 (Ctrl+Alt+Del).
         SendSAS(FALSE);
 
-        // Restore original value if we changed it
+        // 변경한 값을 원래 상태로 복원합니다.
         if let Some(original) = original_value {
             if let Ok(policy_key) = hklm.open_subkey_with_flags(
                 "Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System",
                 KEY_WRITE,
             ) {
                 if original == 0 {
-                    // It didn't exist before, delete it
+                    // 원래 없던 값이므로 삭제합니다.
                     if let Err(e) = policy_key.delete_value("SoftwareSASGeneration") {
                         log::error!("Failed to delete SoftwareSASGeneration: {}", e);
                     } else {
                         log::info!("Deleted SoftwareSASGeneration (restored to original state)");
                     }
                 } else {
-                    // Restore the original value
+                    // 원래 값으로 복원합니다.
                     if let Err(e) = policy_key.set_value("SoftwareSASGeneration", &original) {
                         log::error!(
                             "Failed to restore SoftwareSASGeneration to {}: {}",
@@ -928,20 +1041,27 @@ pub fn send_sas() {
     }
 }
 
+// 데스크톱 변경 감지를 위한 마지막 메시지 시간을 저장합니다.
+// 3초 이상 간격으로 에러를 로깅하기 위해 사용됩니다.
 lazy_static::lazy_static! {
     static ref SUPPRESS: Arc<Mutex<Instant>> = Arc::new(Mutex::new(Instant::now()));
 }
 
+// 현재 입력용 데스크톱이 변경되었는지 확인합니다.
+// true면 데스크톱이 변경되었음을 의미합니다.
 pub fn desktop_changed() -> bool {
     unsafe { inputDesktopSelected() == FALSE }
 }
 
+// 입력용 데스크톱으로 전환을 시도합니다.
+// 성공하면 true를 반환합니다.
 pub fn try_change_desktop() -> bool {
     unsafe {
         if inputDesktopSelected() == FALSE {
             let res = selectInputDesktop() == TRUE;
             if !res {
                 let mut s = SUPPRESS.lock().unwrap();
+                // 3초 이상 간격으로 에러를 로깅합니다 (과도한 로깅 방지).
                 if s.elapsed() > std::time::Duration::from_secs(3) {
                     log::error!("Failed to switch desktop: {}", io::Error::last_os_error());
                     *s = Instant::now();
@@ -955,6 +1075,8 @@ pub fn try_change_desktop() -> bool {
     return false;
 }
 
+// RDP 세션 공유 설정을 레지스트리에서 읽습니다.
+// 기본값은 공유 활성화(TRUE)입니다.
 fn share_rdp() -> BOOL {
     if get_reg("share_rdp") != "false" {
         TRUE
@@ -963,10 +1085,12 @@ fn share_rdp() -> BOOL {
     }
 }
 
+// RDP 세션 공유 여부를 확인합니다.
 pub fn is_share_rdp() -> bool {
     share_rdp() == TRUE
 }
 
+// RDP 세션 공유 설정을 변경합니다.
 pub fn set_share_rdp(enable: bool) {
     let (subkey, _, _, _) = get_install_info();
     let cmd = format!(
@@ -977,12 +1101,15 @@ pub fn set_share_rdp(enable: bool) {
     run_cmds(cmd, false, "share_rdp").ok();
 }
 
+// 현재 프로세스의 세션 ID를 조회합니다.
 pub fn get_current_process_session_id() -> Option<u32> {
     get_session_id_of_process(unsafe { GetCurrentProcessId() })
 }
 
+// 주어진 프로세스 ID(PID)의 세션 ID를 조회합니다.
 pub fn get_session_id_of_process(pid: DWORD) -> Option<u32> {
     let mut sid = 0;
+    // ProcessIdToSessionId API를 호출하여 세션 ID를 얻습니다.
     if unsafe { ProcessIdToSessionId(pid, &mut sid) == TRUE } {
         Some(sid)
     } else {
@@ -1442,16 +1569,32 @@ fn get_after_install(
     ", create_service=get_create_service(&exe))
 }
 
+// 애플리케이션을 Windows 시스템에 설치합니다.
+// 단계:
+// 1. 설치 경로 설정 및 바로가기 생성
+// 2. Windows 레지스트리에 설치 정보 저장
+// 3. 파이어월 규칙 추가
+// 4. Windows 서비스 생성
+// 5. 필요한 경우 프린터 드라이버 설치
+// options: "desktopicon", "startmenu", "printer" 등의 설치 옵션
+// path: 설치 경로 (기본값 사용 시 빈 문자열)
+// silent: 사용자 상호작용 없이 설치할지 여부
+// debug: 디버그 모드 여부
 pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> ResultType<()> {
     let uninstall_str = get_uninstall(false, false);
     let mut path = path.trim_end_matches('\\').to_owned();
+    // 기본 설치 정보를 얻습니다: 레지스트리 서브키, 설치 경로, 시작 메뉴 경로, 실행 파일 경로
     let (subkey, _path, start_menu, exe) = get_default_install_info();
     let mut exe = exe;
     if path.is_empty() {
+        // 설치 경로가 지정되지 않으면 기본 경로를 사용합니다.
         path = _path;
     } else {
+        // 사용자가 지정한 경로에 맞춰 실행 파일 경로를 수정합니다.
         exe = exe.replace(&_path, &path);
     }
+
+    // 버전 정보를 파싱합니다 (예: "1.2.3" -> major=1, minor=2, build=3)
     let mut version_major = "0";
     let mut version_minor = "0";
     let mut version_build = "0";
@@ -2038,16 +2181,22 @@ pub fn update_install_option(k: &str, v: &str) -> ResultType<()> {
 }
 
 #[inline]
+// 현재 운영체제가 Windows Server인지 확인합니다.
 pub fn is_win_server() -> bool {
     unsafe { is_windows_server() > 0 }
 }
 
+// 현재 운영체제가 Windows 10 이상인지 확인합니다.
 #[inline]
 pub fn is_win_10_or_greater() -> bool {
     unsafe { is_windows_10_or_greater() > 0 }
 }
 
+// 애플리케이션 부트스트랩 초기화를 수행합니다.
+// 실행 파일 이름에서 라이선스 정보를 로드하고, 안전한 DLL 로딩을 설정합니다.
+// 디버그 모드에서는 DLL 로딩 초기화를 건너뜁니다. (sciter.dll 오류 방지)
 pub fn bootstrap() -> bool {
+    // 실행 파일 이름으로부터 라이선스/커스텀 서버 정보를 로드합니다.
     if let Ok(lic) = get_license_from_exe_name() {
         *config::EXE_RENDEZVOUS_SERVER.write().unwrap() = lic.host.clone();
     }
@@ -2058,8 +2207,8 @@ pub fn bootstrap() -> bool {
     }
     #[cfg(not(debug_assertions))]
     {
-        // This function will cause `'sciter.dll' was not found neither in PATH nor near the current executable.` when debugging RustDesk.
-        // Only call set_safe_load_dll() on Windows 10 or greater
+        // 이 함수는 RustDesk 디버깅 시 'sciter.dll' 오류를 발생시킬 수 있습니다.
+        // Windows 10 이상에서만 set_safe_load_dll()을 호출합니다.
         if is_win_10_or_greater() {
             set_safe_load_dll()
         } else {
@@ -2068,14 +2217,18 @@ pub fn bootstrap() -> bool {
     }
 }
 
+// 안전한 DLL 로딩을 위한 설정을 수행합니다.
+// SetDefaultDllDirectories와 SetDllDirectoryW를 통해 DLL 검색 경로를 제한합니다.
+// 이는 DLL 주입(DLL Injection) 공격으로부터 보호합니다.
 #[cfg(not(debug_assertions))]
 fn set_safe_load_dll() -> bool {
     if !unsafe { set_default_dll_directories() } {
         return false;
     }
 
-    // `SetDllDirectoryW` should never fail.
-    // https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setdlldirectoryw
+    // SetDllDirectoryW는 실패하지 않아야 합니다.
+    // 빈 문자열을 전달하면 기본 DLL 검색 순서를 사용합니다.
+    // 참고: https://docs.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setdlldirectoryw
     if unsafe { SetDllDirectoryW(wide_string("").as_ptr()) == FALSE } {
         eprintln!("SetDllDirectoryW failed: {}", io::Error::last_os_error());
         return false;
@@ -2084,7 +2237,10 @@ fn set_safe_load_dll() -> bool {
     true
 }
 
-// https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-setdefaultdlldirectories
+// SetDefaultDllDirectories API를 사용하여 기본 DLL 검색 디렉토리를 설정합니다.
+// Windows 10 이상에서만 호출되어야 합니다.
+// 이전 시스템에서는 지원되지 않는 API입니다.
+// 참고: https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-setdefaultdlldirectories
 #[cfg(not(debug_assertions))]
 unsafe fn set_default_dll_directories() -> bool {
     let module = LoadLibraryExW(

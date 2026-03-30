@@ -78,9 +78,9 @@ static MAX_VALIDATED_FILES: std::sync::OnceLock<usize> = std::sync::OnceLock::ne
 #[cfg(not(any(target_os = "ios")))]
 #[inline]
 pub fn get_max_validated_files() -> usize {
-    // If `OPTION_FILE_TRANSFER_MAX_FILES` unset, negative, or non-integer, use
+    // `OPTION_FILE_TRANSFER_MAX_FILES`가 설정되지 않았거나 음수 또는 정수가 아닌 경우 사용합니다
     // `usize::MAX` to represent "no limit", maintaining backward compatibility
-    // with versions that had no file transfer restrictions.
+    // 파일 전송 제한이 없는 버전과 함께.
     const NO_LIMIT_FILE_COUNT: usize = usize::MAX;
     *MAX_VALIDATED_FILES.get_or_init(|| {
         let c = crate::get_builtin_option(OPTION_FILE_TRANSFER_MAX_FILES)
@@ -379,7 +379,7 @@ pub fn remove(id: i32) {
     CLIENTS.write().unwrap().remove(&id);
 }
 
-// server mode send chat to peer
+// 서버 모드는 피어에게 채팅을 보냅니다
 #[inline]
 #[cfg(not(any(target_os = "ios")))]
 pub fn send_chat(id: i32, text: String) {
@@ -440,9 +440,9 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
         const MILLI5: Duration = Duration::from_millis(5);
         const SEC30: Duration = Duration::from_secs(30);
 
-        // for tmp use, without real conn id
+        // 임시 사용을 위해 실제 연결 ID 없이
         let mut write_jobs: Vec<fs::TransferJob> = Vec::new();
-        // File timer for processing read_jobs
+        // read_jobs 처리를 위한 파일 타이머
         let mut file_timer =
             crate::rustdesk_interval(time::interval_at(Instant::now() + SEC30, SEC30));
 
@@ -542,9 +542,9 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
                                     } else {
                                         handle_fs(fs, &mut write_jobs, &mut self.read_jobs, &self.tx, Some(&tx_log), self.conn_id).await;
                                     }
-                                    // Activate fast timer immediately when read jobs exist.
-                                    // This ensures new jobs start processing without waiting for the slow 30s timer.
-                                    // Deactivation (back to 30s) happens in tick handler when jobs are exhausted.
+                                    // 읽기 작업이 존재할 때 빠른 타이머를 즉시 활성화합니다.
+                                    // 이는 느린 30초 타이머를 기다리지 않고 새 작업이 처리를 시작하도록 보장합니다.
+                                    // 비활성화(30초로 돌아감)는 작업이 소진되었을 때 tick 핸들러에서 발생합니다.
                                     if !self.read_jobs.is_empty() {
                                         file_timer = crate::rustdesk_interval(time::interval(MILLI5));
                                     }
@@ -611,7 +611,7 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
                                             for c in multi_clipoards.clipboards.into_iter() {
                                                 let content_len = c.content.len();
                                                 let (content, next_raw) = {
-                                                    // TODO: find out a better threshold
+                                                    // 할 일: 더 나은 임계값을 찾습니다
                                                     if content_len > 1024 * 3 {
                                                         raw_contents.extend(c.content);
                                                         (bytes::Bytes::new(), true)
@@ -650,15 +650,15 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
                     }
                 }
                 Some(data) = self.rx.recv() => {
-                    // For FileBlockFromCM, data is sent separately via send_raw (data field has #[serde(skip)]).
-                    // This avoids JSON encoding overhead for large binary data.
-                    // This mirrors the WriteBlock pattern in start_ipc (see rx_to_cm handler).
+                    // FileBlockFromCM의 경우 데이터는 send_raw를 통해 별도로 전송됩니다 (데이터 필드에는 #[serde(skip)]이 있습니다).
+                    // 이는 큰 바이너리 데이터에 대한 JSON 인코딩 오버헤드를 피합니다.
+                    // 이것은 start_ipc의 WriteBlock 패턴을 반영합니다 (rx_to_cm 핸들러 참조).
                     //
-                    // Note: Empty data (for empty files) is correctly handled. BytesCodec with raw=false
+                    // 참고: 빈 데이터(빈 파일의 경우)가 올바르게 처리됩니다. raw=false인 BytesCodec
                     // (the default for IPC connections) adds a length prefix, so send_raw(Bytes::new())
-                    // sends a 1-byte frame that next_raw() can correctly receive as empty data.
+                    // next_raw()가 빈 데이터로 올바르게 수신할 수 있는 1바이트 프레임을 보냅니다.
                     if let Data::FileBlockFromCM { id, file_num, ref data, compressed, conn_id } = data {
-                        // Send metadata first (data field is skipped by serde), then raw data bytes
+                        // 먼저 메타데이터를 보낸 다음(데이터 필드는 serde에 의해 건너뜀) 원시 데이터 바이트를 보냅니다
                         if let Err(e) = self.stream.send(&Data::FileBlockFromCM {
                             id,
                             file_num,
@@ -710,8 +710,8 @@ impl<T: InvokeUiCM> IpcTaskRunner<T> {
                                 ContextSend::set_is_stopped();
                             } else {
                                 if _clip.is_beginning_message() && crate::get_builtin_option(OPTION_ONE_WAY_FILE_TRANSFER) == "Y" {
-                                    // If one way file transfer is enabled, don't send clipboard file to client
-                                    // Don't call `ContextSend::set_is_stopped()`, because it will stop bidirectional file copy&paste.
+                                    // 일방 파일 전송이 활성화된 경우 클립보드 파일을 클라이언트에 보내지 마십시오
+                                    // `ContextSend::set_is_stopped()`를 호출하지 마십시오. 양방향 파일 복사&붙여넣기가 중지됩니다.
                                 } else {
                                     allow_err!(self.tx.send(Data::ClipboardFile(_clip)));
                                 }
@@ -864,7 +864,7 @@ pub async fn start_listen<T: InvokeUiCM>(
                 cm.new_message(current_id, text);
             }
             Some(Data::FS(fs)) => {
-                // Android doesn't need CM-side file reading (no need_validate_file_read_access)
+                // Android는 CM 측 파일 읽기가 필요하지 않습니다 (need_validate_file_read_access 없음)
                 let mut read_jobs_placeholder: Vec<fs::TransferJob> = Vec::new();
                 handle_fs(
                     fs,
@@ -941,11 +941,11 @@ async fn handle_fs(
             total_size,
             conn_id,
         } => {
-            // Validate file names to prevent path traversal attacks.
-            // This must be done BEFORE any path operations to ensure attackers cannot
+            // 경로 순회 공격을 방지하기 위해 파일 이름을 검증합니다.
+            // 이는 공격자가 수행할 수 없도록 모든 경로 작업 전에 수행해야 합니다
             // escape the target directory using names like "../../malicious.txt"
             if let Err(e) = validate_transfer_file_names(&files) {
-                log::warn!("Path traversal attempt detected for {}: {}", path, e);
+                log::warn!("경로 순회 attempt detected for {}: {}", path, e);
                 send_raw(fs::new_error(id, e, file_num), tx);
                 return;
             }
@@ -1108,10 +1108,10 @@ async fn handle_fs(
             )
             .await;
         }
-        // Cancel an ongoing read job (file transfer from server to client).
-        // Note: This only cancels jobs in `read_jobs`. It does NOT cancel `ReadAllFiles`
-        // operations, which are one-shot directory scans that complete quickly and don't
-        // have persistent job tracking.
+        // 진행 중인 읽기 작업(서버에서 클라이언트로의 파일 전송)을 취소합니다.
+        // 참고: 이것은 `read_jobs`의 작업만 취소합니다. `ReadAllFiles`를 취소하지 않습니다
+        // 한 번의 디렉터리 스캔으로 빠르게 완료되고 다음과 같지 않은 작업입니다:
+        // 지속적인 작업 추적이 있습니다.
         ipc::FS::CancelRead { id, conn_id: _ } => {
             if let Some(job) = fs::remove_job(id, read_jobs) {
                 if let Some(tx) = tx_log {
@@ -1144,10 +1144,10 @@ async fn handle_fs(
                 job.confirm(&req).await;
             }
         }
-        // Recursively list all files in a directory.
-        // This is a one-shot operation that cannot be cancelled via CancelRead.
-        // The operation typically completes quickly as it only reads directory metadata,
-        // not file contents. File count is limited by `check_file_count_limit()`.
+        // 디렉터리의 모든 파일을 재귀적으로 나열합니다.
+        // 이것은 CancelRead를 통해 취소할 수 없는 일회 작업입니다.
+        // 작업은 일반적으로 디렉터리 메타데이터만 읽으므로 빠르게 완료됩니다.
+        // 파일 내용이 아닙니다. 파일 수는 `check_file_count_limit()`에 의해 제한됩니다.
         ipc::FS::ReadAllFiles {
             path,
             id,
@@ -1165,13 +1165,13 @@ async fn handle_fs(
 /// "../../../etc/passwd" or "..\\..\\Windows\\System32\\malicious.dll".
 #[cfg(not(any(target_os = "ios")))]
 fn validate_file_name_no_traversal(name: &str) -> ResultType<()> {
-    // Check for null bytes which could cause path truncation in some APIs
+    // 일부 API에서 경로 자르기를 유발할 수 있는 null 바이트를 확인합니다
     if name.bytes().any(|b| b == 0) {
         bail!("file name contains null bytes");
     }
 
-    // Check for path traversal patterns
-    // We check for both Unix and Windows path separators
+    // 경로 순회 패턴을 확인합니다
+    // Unix 및 Windows 경로 구분 기호 모두를 확인합니다
     if name
         .split(|c| c == '/' || c == '\\')
         .filter(|s| !s.is_empty())
@@ -1180,7 +1180,7 @@ fn validate_file_name_no_traversal(name: &str) -> ResultType<()> {
         bail!("path traversal detected in file name");
     }
 
-    // On Windows, also check for drive letters (e.g., "C:")
+    // Windows에서는 드라이브 문자(예: "C:")도 확인합니다
     #[cfg(windows)]
     {
         if name.len() >= 2 {
@@ -1191,7 +1191,7 @@ fn validate_file_name_no_traversal(name: &str) -> ResultType<()> {
         }
     }
 
-    // Check for names starting with path separator:
+    // 경로 구분 기호로 시작하는 이름을 확인합니다:
     // - Unix absolute paths (e.g., "/etc/passwd")
     // - Windows UNC paths (e.g., "\\server\share")
     if name.starts_with('/') || name.starts_with('\\') {
@@ -1211,14 +1211,14 @@ fn is_single_file_with_empty_name(files: &[(String, u64)]) -> bool {
 #[cfg(not(any(target_os = "ios")))]
 fn validate_transfer_file_names(files: &[(String, u64)]) -> ResultType<()> {
     if is_single_file_with_empty_name(files) {
-        // Allow empty name for single file.
-        // The full path is provided in the `path` parameter for single file transfers.
+        // 단일 파일에 대해 빈 이름을 허용합니다.
+        // 단일 파일 전송을 위해 전체 경로가 `path` 매개변수에 제공됩니다.
         return Ok(());
     }
 
     for (name, _) in files {
-        // In multi-file transfers, empty names are not allowed.
-        // Each file must have a valid name to construct the destination path.
+        // 다중 파일 전송에서는 빈 이름이 허용되지 않습니다.
+        // 각 파일은 대상 경로를 구성하기 위해 유효한 이름을 가져야 합니다.
         if name.is_empty() {
             bail!("empty file name in multi-file transfer");
         }
@@ -1265,9 +1265,9 @@ async fn start_read_job(
 
     match result {
         Ok(Ok(mut job)) => {
-            // Optional: enforce file count limit for CM-side jobs to avoid
-            // excessive I/O. This is applied on the job's file list produced
-            // by `new_read`, similar to how AllFiles uses the same helper.
+            // 선택 사항: CM 측 작업에 대한 파일 수 제한을 적용하여 다음을 방지합니다:
+            // 과도한 I/O. 이것은 작업의 파일 목록에 적용됩니다
+            // `new_read`에 의해 AllFiles가 동일한 도우미를 사용하는 방식과 유사합니다.
             if let Err(msg) = check_file_count_limit(job.files().len()) {
                 if let Err(e) = tx.send(Data::ReadJobInitResult {
                     id,
@@ -1281,7 +1281,7 @@ async fn start_read_job(
                 return;
             }
 
-            // Build FileDirectory from the job's file list and serialize
+            // 작업의 파일 목록에서 FileDirectory를 작성하고 직렬화합니다
             let files = job.files().to_owned();
             let mut dir = FileDirectory::new();
             dir.id = id;
@@ -1314,7 +1314,7 @@ async fn start_read_job(
                 log::error!("error sending ReadJobInitResult via IPC: {}", e);
             }
 
-            // Attach connection id so CM can route read blocks back correctly
+            // CM이 읽기 블록을 올바르게 라우팅할 수 있도록 연결 ID를 첨부합니다
             job.conn_id = conn_id;
             read_jobs.push(job);
         }
@@ -1362,7 +1362,7 @@ async fn handle_read_jobs_tick(
             continue;
         }
 
-        // Initialize data stream if needed (opens file, sends digest for overwrite detection)
+        // 필요한 경우 데이터 스트림을 초기화합니다 (파일을 열고 덮어쓰기 감지를 위한 다이제스트를 보냅니다)
         if let Err(err) = init_read_job_for_cm(job, tx, conn_id).await {
             if let Err(e) = tx.send(Data::FileReadError {
                 id: job.id,
@@ -1376,7 +1376,7 @@ async fn handle_read_jobs_tick(
             continue;
         }
 
-        // Read a block from the file
+        // 파일에서 블록을 읽습니다
         match job.read().await {
             Err(err) => {
                 if let Err(e) = tx.send(Data::FileReadError {
@@ -1387,9 +1387,9 @@ async fn handle_read_jobs_tick(
                 }) {
                     log::error!("error sending FileReadError via IPC: {}", e);
                 }
-                // Mark job as finished to prevent infinite retries.
-                // Connection side will have already removed cm_read_job_ids
-                // after receiving FileReadError, so continuing would be pointless.
+                // 무한 재시도를 방지하기 위해 작업을 완료로 표시합니다.
+                // 연결 측은 이미 cm_read_job_ids를 제거했을 것입니다
+                // FileReadError를 받은 후 계속하는 것은 의미가 없습니다.
                 finished.push(job.id);
             }
             Ok(Some(block)) => {
@@ -1428,10 +1428,10 @@ async fn handle_read_jobs_tick(
                         }
                     }
                 }
-                // else: waiting for confirmation from peer
+                // 아니면: 피어의 확인을 기다리는 중입니다
             }
         }
-        // Break to handle jobs one by one.
+        // 작업을 하나씩 처리하도록 중단합니다.
         break;
     }
 
@@ -1454,10 +1454,10 @@ async fn init_read_job_for_cm(
     tx: &UnboundedSender<Data>,
     conn_id: i32,
 ) -> ResultType<()> {
-    // Initialize data stream and get digest info if overwrite detection is needed
+    // 필요한 경우 데이터 스트림을 초기화하고 다이제스트 정보를 가져옵니다
     match job.init_data_stream_for_cm().await? {
         Some((last_modified, file_size)) => {
-            // Send digest via IPC for overwrite detection
+            // 덮어쓰기 감지를 위해 IPC를 통해 다이제스트를 보냅니다
             if let Err(e) = tx.send(Data::FileDigestFromCM {
                 id: job.id,
                 file_num: job.file_num(),
@@ -1470,7 +1470,7 @@ async fn init_read_job_for_cm(
             }
         }
         None => {
-            // Job done or already initialized, nothing to do
+            // 작업이 완료되었거나 이미 초기화되었으므로 수행할 작업이 없습니다
         }
     }
     Ok(())
@@ -1489,11 +1489,11 @@ async fn read_all_files(
 
     let result = match result {
         Ok(Ok(files)) => {
-            // Check file count limit to prevent excessive I/O and resource usage
+            // 과도한 I/O 및 리소스 사용을 방지하기 위해 파일 수 제한을 확인합니다
             if let Err(msg) = check_file_count_limit(files.len()) {
                 Err(msg)
             } else {
-                // Serialize FileDirectory to protobuf bytes
+                // FileDirectory를 protobuf 바이트로 직렬화합니다
                 let mut fd = FileDirectory::new();
                 fd.id = id;
                 fd.path = path_clone.clone();
@@ -1602,11 +1602,11 @@ async fn create_dir(path: String, id: i32, tx: &UnboundedSender<Data>) {
 async fn rename_file(path: String, new_name: String, id: i32, tx: &UnboundedSender<Data>) {
     handle_result(
         spawn_blocking(move || {
-            // Rename target must not be empty
+            // 대상 이름 바꾸기는 비워둘 수 없습니다
             if new_name.is_empty() {
                 bail!("new file name cannot be empty");
             }
-            // Validate that new_name doesn't contain path traversal
+            // new_name에 경로 순회가 포함되지 않았는지 확인합니다
             validate_file_name_no_traversal(&new_name)?;
             fs::rename_file(&path, &new_name)
         })
@@ -1684,7 +1684,7 @@ pub fn elevate_portable(_id: i32) {
 #[inline]
 pub fn handle_incoming_voice_call(id: i32, accept: bool) {
     if let Some(client) = CLIENTS.read().unwrap().get(&id) {
-        // Not handled in iOS yet.
+        // 아직 iOS에서 처리되지 않았습니다.
         #[cfg(not(any(target_os = "ios")))]
         allow_err!(client.tx.send(Data::VoiceCallResponse(accept)));
     };
@@ -1694,7 +1694,7 @@ pub fn handle_incoming_voice_call(id: i32, accept: bool) {
 #[inline]
 pub fn close_voice_call(id: i32) {
     if let Some(client) = CLIENTS.read().unwrap().get(&id) {
-        // Not handled in iOS yet.
+        // 아직 iOS에서 처리되지 않았습니다.
         #[cfg(not(any(target_os = "ios")))]
         allow_err!(client.tx.send(Data::CloseVoiceCall("".to_owned())));
     };
@@ -1702,7 +1702,7 @@ pub fn close_voice_call(id: i32) {
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn quit_cm() {
-    // in case of std::process::exit not work
+    // std::process::exit이 작동하지 않는 경우
     log::info!("quit cm");
     CLIENTS.write().unwrap().clear();
     crate::platform::quit_gui();
@@ -1776,22 +1776,22 @@ mod tests {
     #[test]
     #[cfg(not(any(target_os = "ios")))]
     fn validate_file_name_security() {
-        // Null byte injection
+        // Null 바이트 주입
         assert!(super::validate_file_name_no_traversal("file\0.txt").is_err());
         assert!(super::validate_file_name_no_traversal("test\0").is_err());
 
-        // Path traversal
+        // 경로 순회
         assert!(super::validate_file_name_no_traversal("../etc/passwd").is_err());
         assert!(super::validate_file_name_no_traversal("foo/../bar").is_err());
         assert!(super::validate_file_name_no_traversal("..").is_err());
 
-        // Absolute paths
+        // 절대 경로
         assert!(super::validate_file_name_no_traversal("/etc/passwd").is_err());
         assert!(super::validate_file_name_no_traversal("\\Windows").is_err());
         #[cfg(windows)]
         assert!(super::validate_file_name_no_traversal("C:\\Windows").is_err());
 
-        // Valid paths
+        // 유효한 경로
         assert!(super::validate_file_name_no_traversal("file.txt").is_ok());
         assert!(super::validate_file_name_no_traversal("subdir/file.txt").is_ok());
         assert!(super::validate_file_name_no_traversal("").is_ok());
@@ -1818,13 +1818,13 @@ mod tests {
         let _ = fs::remove_dir_all(&base_dir);
         fs::create_dir_all(&base_dir).unwrap();
 
-        // Create target file in a subdirectory
+        // 하위 디렉터리에 대상 파일을 만듭니다
         let target_dir = base_dir.join("target_dir");
         fs::create_dir_all(&target_dir).unwrap();
         let target_file = target_dir.join("target.txt");
         fs::write(&target_file, b"content").unwrap();
 
-        // Create symlink in a different directory
+        // 다른 디렉터리에 심볼릭 링크를 만듭니다
         let link_dir = base_dir.join("link_dir");
         fs::create_dir_all(&link_dir).unwrap();
         let link_path = link_dir.join("link.txt");
@@ -1842,7 +1842,7 @@ mod tests {
         {
             use std::os::windows::fs::symlink_file;
             if symlink_file(&target_file, &link_path).is_err() {
-                // Skip if no permission (needs admin or dev mode on Windows)
+                // 권한이 없으면 건너뜁니다 (Windows에서 관리자 또는 개발자 모드 필요)
                 let _ = fs::remove_dir_all(&base_dir);
                 return;
             }

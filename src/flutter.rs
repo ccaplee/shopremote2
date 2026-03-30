@@ -197,30 +197,41 @@ pub unsafe extern "C" fn get_rustdesk_app_name(buffer: *mut u16, length: i32) ->
     -1
 }
 
+/// Flutter UI 세션을 위한 핸들러 데이터
 #[derive(Default)]
 struct SessionHandler {
+    /// Flutter로 전송할 이벤트 스트림
     event_stream: Option<StreamSink<EventToUI>>,
-    // displays of current session.
-    // We need this variable to check if the display is in use before pushing rgba to flutter.
+    /// 현재 세션의 디스플레이 ID 목록
+    /// RGBA 데이터를 Flutter로 전송하기 전에 디스플레이 사용 여부를 확인해야 합니다
     displays: Vec<usize>,
+    /// 비디오 렌더러 (RGBA 또는 GPU 텍스처 렌더링)
     renderer: VideoRenderer,
 }
 
+/// 렌더링 방식을 구분하는 열거형
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum RenderType {
+    /// 픽셀 버퍼 렌더링 (소프트웨어 렌더링)
     PixelBuffer,
+    /// GPU 텍스처 렌더링 (하드웨어 가속)
     #[cfg(feature = "vram")]
     Texture,
 }
 
+/// Flutter 핸들러: 원격 세션과 Flutter UI 간의 인터페이스
 #[derive(Clone)]
 pub struct FlutterHandler {
-    // ui session id -> display handler data
+    /// 세션 ID -> 세션 핸들러 매핑 (멀티 UI 세션 지원)
     session_handlers: Arc<RwLock<HashMap<SessionID, SessionHandler>>>,
+    /// 디스플레이 ID -> RGBA 데이터 매핑 (캐시)
     display_rgbas: Arc<RwLock<HashMap<usize, RgbaData>>>,
+    /// 원격 피어의 정보 (디스플레이, 기능 등)
     peer_info: Arc<RwLock<PeerInfo>>,
+    /// 플러그인 훅 (데스크톱 플랫폼만)
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     hooks: Arc<RwLock<HashMap<String, SessionHook>>>,
+    /// 텍스처 렌더링 사용 여부
     use_texture_render: Arc<AtomicBool>,
 }
 
@@ -239,14 +250,18 @@ impl Default for FlutterHandler {
     }
 }
 
+/// RGBA 비디오 프레임 데이터
+/// 안전성: data는 valid로 보호되며, valid == true일 때만 안전하게 접근 가능합니다
+/// 반드시 data를 읽기 전에 valid를 확인해야 합니다
 #[derive(Default, Clone)]
 struct RgbaData {
-    // SAFETY: [rgba] is guarded by [rgba_valid], and it's safe to reach [rgba] with `rgba_valid == true`.
-    // We must check the `rgba_valid` before reading [rgba].
+    /// RGBA 픽셀 데이터
     data: Vec<u8>,
+    /// 데이터 유효성 플래그
     valid: bool,
 }
 
+/// Flutter RGBA 렌더러 플러그인의 FFI 함수 타입
 pub type FlutterRgbaRendererPluginOnRgba = unsafe extern "C" fn(
     texture_rgba: *mut c_void,
     buffer: *const u8,
@@ -256,31 +271,43 @@ pub type FlutterRgbaRendererPluginOnRgba = unsafe extern "C" fn(
     dst_rgba_stride: c_int,
 );
 
+/// Flutter GPU 텍스처 렌더러 플러그인의 FFI 함수 타입
 #[cfg(feature = "vram")]
 pub type FlutterGpuTextureRendererPluginCApiSetTexture =
     unsafe extern "C" fn(output: *mut c_void, texture: *mut c_void);
 
+/// Flutter GPU 텍스처 렌더러 플러그인 어댑터 LUID 조회 함수
 #[cfg(feature = "vram")]
 pub type FlutterGpuTextureRendererPluginCApiGetAdapterLuid = unsafe extern "C" fn() -> i64;
 
+/// Flutter 네이티브 텍스처 포인터 타입
 pub(super) type TextureRgbaPtr = usize;
 
+/// 디스플레이별 렌더링 세션 정보
 struct DisplaySessionInfo {
-    // TextureRgba pointer in flutter native.
+    /// Flutter 네이티브의 TextureRgba 포인터
     texture_rgba_ptr: TextureRgbaPtr,
+    /// 디스플레이 크기 (너비, 높이)
     size: (usize, usize),
+    /// GPU 출력 포인터 (VRAM 렌더링)
     #[cfg(feature = "vram")]
     gpu_output_ptr: usize,
+    /// 마지막으로 알린 렌더링 방식
     notify_render_type: Option<RenderType>,
 }
 
-// Video Texture Renderer in Flutter
+/// Flutter 비디오 텍스처 렌더러
+/// 픽셀 버퍼 또는 GPU 텍스처를 통해 비디오 프레임을 렌더링합니다
 #[derive(Clone)]
 struct VideoRenderer {
+    /// 멀티 UI 세션 지원 여부
     is_support_multi_ui_session: bool,
+    /// 디스플레이 ID -> 렌더링 세션 정보 매핑
     map_display_sessions: Arc<RwLock<HashMap<usize, DisplaySessionInfo>>>,
+    /// RGBA 렌더러 플러그인 함수 포인터 (데스크톱)
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     on_rgba_func: Option<Symbol<'static, FlutterRgbaRendererPluginOnRgba>>,
+    /// GPU 텍스처 렌더러 플러그인 함수 포인터 (VRAM 지원)
     #[cfg(feature = "vram")]
     on_texture_func: Option<Symbol<'static, FlutterGpuTextureRendererPluginCApiSetTexture>>,
 }

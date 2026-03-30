@@ -6,23 +6,25 @@ use crate::{define_method_prefix, flutter::APP_TYPE_MAIN};
 
 use super::PluginNativeHandler;
 
+/// UI 인터페이스 관련 네이티브 핸들러
 #[derive(Default)]
 pub struct PluginNativeUIHandler;
 
-/// Callback for UI interface.
+/// UI 콜백 함수의 반환값을 처리하는 함수 타입
 ///
-/// [Note]
-/// We will transfer the native callback to u64 and post it to flutter.
-/// The flutter thread will directly call this method.
+/// # 주의
+/// 네이티브 콜백을 u64로 변환하여 Flutter로 전송하고,
+/// Flutter 스레드가 이 콜백을 직접 호출합니다.
 ///
-/// an example of `data` is:
-/// ```
+/// `data` 파라미터의 예시:
+/// ```json
 /// {
 ///     "cb": 0x1234567890
 /// }
 /// ```
-/// [Safety]
-/// Please make sure the callback u provided is VALID, or memory or calling issues may occur to cause the program crash!
+///
+/// # 안전성
+/// 제공한 콜백이 유효한지 확인하세요. 그렇지 않으면 메모리 오류나 호출 문제로 인해 프로그램이 충돌할 수 있습니다!
 pub type OnUIReturnCallback =
     extern "C" fn(return_code: c_int, data: *const c_void, data_len: u64, user_data: *const c_void);
 
@@ -96,17 +98,16 @@ impl PluginNativeHandler for PluginNativeUIHandler {
 }
 
 impl PluginNativeUIHandler {
-    /// Call with method `select_peers_async` and the following json:
+    /// 피어 선택 다이얼로그를 비동기로 열고 결과를 콜백으로 받습니다
+    ///
+    /// # 호출 방식
+    /// `select_peers_async` 메서드를 다음 JSON으로 호출합니다:
     /// ```json
     /// {
-    ///     "cb": 0, // The function address
-    ///     "user_data": 0 // An opaque pointer value passed to the callback.
+    ///     "cb": 0,          // 함수 주소 (OnUIReturnCallback 타입)
+    ///     "user_data": 0    // 콜백으로 전달될 불투명한 포인터 값
     /// }
     /// ```
-    ///
-    /// [Arguments]
-    /// @param cb: the function address with type [OnUIReturnCallback].
-    /// @param user_data: the function will be called with this value.
     fn select_peers_async(&self, cb: u64, user_data: u64) {
         let mut param = HashMap::new();
         param.insert("name", json!("native_ui"));
@@ -119,13 +120,15 @@ impl PluginNativeUIHandler {
         );
     }
 
-    /// Call with method `register_ui_entry` and the following json:
-    /// ```
+    /// UI에 새 항목을 등록합니다
+    ///
+    /// # 호출 방식
+    /// `register_ui_entry` 메서드를 다음 JSON으로 호출합니다:
+    /// ```json
     /// {
-    ///     
-    ///     "on_tap_cb": 0, // The function address
-    ///     "user_data": 0, // An opaque pointer value passed to the callback.
-    ///     "title": "entry name"
+    ///     "on_tap_cb": 0,     // 함수 주소 (클릭 시 호출)
+    ///     "user_data": 0,     // 콜백으로 전달될 불투명한 포인터 값
+    ///     "title": "entry name" // 항목의 이름
     /// }
     /// ```
     fn register_ui_entry(&self, title: &str, on_tap_cb: u64, user_data: u64) {

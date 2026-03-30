@@ -89,15 +89,15 @@ fn make_tray() -> hbb_common::ResultType<()> {
         crate::platform::macos::handle_application_should_open_untitled_file();
         #[cfg(target_os = "windows")]
         {
-            // Do not use "start uni link" way, it may not work on some Windows, and pop out error
-            // dialog, I found on one user's desktop, but no idea why, Windows is shit.
-            // Use `run_me` instead.
+            // "start uni link" 방식을 사용하지 마십시오. 일부 Windows에서 작동하지 않을 수 있으며 오류가 표시될 수 있습니다
+            // 대화 상자가 표시될 수 있습니다. 한 사용자의 데스크톱에서 발견했지만 이유는 알 수 없습니다. Windows는 이상합니다.
+            // `run_me`를 대신 사용하십시오.
             // `allow_multiple_instances` in `flutter/windows/runner/main.cpp` allows only one instance without args.
             crate::run_me::<&str>(vec![]).ok();
         }
         #[cfg(target_os = "linux")]
         {
-            // Do not use "xdg-open", it won't read the config.
+            // "xdg-open"을 사용하지 마십시오. 설정을 읽지 않습니다.
             if crate::dbus::invoke_new_connection(crate::get_uri_prefix()).is_err() {
                 if let Ok(task) = crate::run_me::<&str>(vec![]) {
                     crate::server::CHILD_PROCESS.lock().unwrap().push(task);
@@ -123,13 +123,13 @@ fn make_tray() -> hbb_common::ResultType<()> {
         );
 
         if let tao::event::Event::NewEvents(tao::event::StartCause::Init) = event {
-            // for fixing https://github.com/rustdesk/rustdesk/discussions/10210#discussioncomment-14600745
-            // so we start tray, but not to show it
+            // https://github.com/rustdesk/rustdesk/discussions/10210#discussioncomment-14600745 수정을 위해
+            // 따라서 트레이를 시작하지만 표시하지는 않습니다
             if crate::ui_interface::get_builtin_option(hbb_common::config::keys::OPTION_HIDE_TRAY) == "Y" {
                 return;
             }
-            // We create the icon once the event loop is actually running
-            // to prevent issues like https://github.com/tauri-apps/tray-icon/issues/90
+            // 이벤트 루프가 실제로 실행되면 아이콘을 생성합니다
+            // https://github.com/tauri-apps/tray-icon/issues/90 같은 문제를 방지하기 위해
             let tray = TrayIconBuilder::new()
                 .with_menu(Box::new(tray_menu.clone()))
                 .with_tooltip(tooltip(0))
@@ -143,8 +143,8 @@ fn make_tray() -> hbb_common::ResultType<()> {
                 }
             };
 
-            // We have to request a redraw here to have the icon actually show up.
-            // Tao only exposes a redraw method on the Window so we use core-foundation directly.
+            // 아이콘이 실제로 표시되도록 여기서 다시 그리기를 요청해야 합니다.
+            // Tao는 Window에서만 다시 그리기 메서드를 노출하므로 core-foundation을 직접 사용합니다.
             #[cfg(target_os = "macos")]
             unsafe {
                 use core_foundation::runloop::{CFRunLoopGetMain, CFRunLoopWakeUp};

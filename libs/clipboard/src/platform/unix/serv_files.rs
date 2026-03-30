@@ -7,38 +7,54 @@ use hbb_common::{
 use parking_lot::Mutex;
 use std::{path::PathBuf, sync::Arc, usize};
 
+/// 로컬 파일 캐시입니다.
+/// 파일 복사 중에는 이 값을 변경하면 안 됩니다.
+/// CliprdrFileContentsRequest는 리스트의 파일 인덱스만 포함하므로,
+/// 원격 쪽과 같은 순서로 파일 리스트를 유지해야 합니다.
+/// 향후 CliprdrFileContentsRequest에 FileId 필드를 추가할 수도 있습니다.
 lazy_static::lazy_static! {
-    // local files are cached, this value should not be changed when copying files
-    // Because `CliprdrFileContentsRequest` only contains the index of the file in the list.
-    // We need to keep the file list in the same order as the remote side.
-    // We may add a `FileId` field to `CliprdrFileContentsRequest` in the future.
     static ref CLIP_FILES: Arc<Mutex<ClipFiles>> = Default::default();
 }
 
+/// 파일 내용 요청의 종류를 나타내는 열거형입니다.
 #[derive(Debug)]
 enum FileContentsRequest {
+    /// 파일 크기 요청
     Size {
+        /// 스트림 ID
         stream_id: i32,
+        /// 파일 인덱스
         file_idx: usize,
     },
 
+    /// 파일 범위 요청
     Range {
+        /// 스트림 ID
         stream_id: i32,
+        /// 파일 인덱스
         file_idx: usize,
+        /// 파일 오프셋
         offset: u64,
+        /// 요청 길이
         length: u64,
     },
 }
 
+/// 클립보드의 파일들을 캐시하고 관리하는 구조체입니다.
 #[derive(Default)]
 struct ClipFiles {
+    /// 파일 경로 목록
     files: Vec<String>,
+    /// LocalFile 객체 목록
     file_list: Vec<LocalFile>,
+    /// 첫 번째 일반 파일의 인덱스
     first_file_index: usize,
+    /// 파일 리스트 PDU (Protocol Data Unit)
     files_pdu: Vec<u8>,
 }
 
 impl ClipFiles {
+    /// 캐시된 파일 목록을 초기화합니다.
     fn clear(&mut self) {
         self.files.clear();
         self.file_list.clear();
@@ -46,6 +62,7 @@ impl ClipFiles {
         self.files_pdu.clear();
     }
 
+    /// 클립보드 파일 목록을 동기화하고 메타데이터를 수집합니다.
     fn sync_files(&mut self, clipboard_files: &[String]) -> Result<(), CliprdrError> {
         let clipboard_paths = clipboard_files
             .iter()
@@ -61,6 +78,7 @@ impl ClipFiles {
         Ok(())
     }
 
+    /// 파일 리스트를 PDU 형식으로 빌드합니다.
     fn build_file_list_pdu(&mut self) {
         let mut data = BytesMut::with_capacity(4 + 592 * self.file_list.len());
         data.put_u32_le(self.file_list.len() as u32);

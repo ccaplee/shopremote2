@@ -77,31 +77,40 @@ pub mod video_service;
 #[cfg(all(target_os = "windows", feature = "flutter"))]
 pub mod printer_service;
 
+// 자식 프로세스들을 관리하기 위한 타입 정의
 pub type Childs = Arc<Mutex<Vec<std::process::Child>>>;
+// 연결 맵: 연결 ID -> 연결 정보
 type ConnMap = HashMap<i32, ConnInner>;
 
 #[cfg(any(target_os = "macos", target_os = "linux"))]
+// macOS 및 Linux에서의 설정 동기화 간격 (0.3초)
 const CONFIG_SYNC_INTERVAL_SECS: f32 = 0.3;
 #[cfg(any(target_os = "macos", target_os = "linux"))]
-// 3s is enough for at least one initial sync attempt:
-// 0.3s backoff + up to 1s connect timeout + up to 1s response timeout.
+/// 초기 설정 동기화 대기 시간
+/// 3초면 최소 1회 동기화 시도가 가능하다:
+/// 0.3초 백오프 + 최대 1초 연결 타임아웃 + 최대 1초 응답 타임아웃
 const CONFIG_SYNC_INITIAL_WAIT_SECS: u64 = 3;
 
 lazy_static::lazy_static! {
+    // 자식 프로세스 관리
     pub static ref CHILD_PROCESS: Childs = Default::default();
-    // A client server used to provide local services(audio, video, clipboard, etc.)
-    // for all initiative connections.
-    //
-    // [Note]
-    // ugly
-    // Now we use this [`CLIENT_SERVER`] to do following operations:
-    // - record local audio, and send to remote
+
+    /// 모든 클라이언트 연결에 로컬 서비스(음성, 비디오, 클립보드 등)를 제공하는 클라이언트 서버
+    ///
+    /// # 주의
+    /// 설계가 다소 복잡하다. 현재는 다음 작업에 이를 사용한다:
+    /// - 로컬 음성 녹음 및 원격으로 전송
     pub static ref CLIENT_SERVER: ServerPtr = new();
 }
 
+/// 원격 제어 서버
+/// 클라이언트 연결들을 관리하고 각종 서비스(비디오, 음성, 클립보드 등)를 제공한다.
 pub struct Server {
+    // 활성 클라이언트 연결들 (ID -> 연결 정보)
     connections: ConnMap,
+    // 제공되는 서비스들 (서비스명 -> 서비스 객체)
     services: HashMap<String, Box<dyn Service>>,
+    // 새로운 연결에 할당할 다음 ID (순증가)
     id_count: i32,
 }
 

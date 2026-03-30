@@ -1,4 +1,7 @@
 #[cfg(target_os = "linux")]
+/// 원격 입력 서비스 - 마우스, 키보드 입력을 원격으로 전송
+/// 사용자의 입력 이벤트를 캡처하고 전처리하는 모듈
+
 use super::rdp_input::client::{RdpInputKeyboard, RdpInputMouse};
 use super::*;
 use crate::input::*;

@@ -21,27 +21,45 @@ use std::{
 };
 use utf16string::WString;
 
+/// 로컬 파일 시스템의 파일을 나타내는 구조체입니다.
+/// 로컬 파일을 읽어서 원격으로 전송할 때 사용됩니다.
 #[derive(Debug)]
 pub(super) struct LocalFile {
+    /// 상대 경로의 루트 디렉토리
     pub relative_root: PathBuf,
+    /// 파일의 절대 경로
     pub path: PathBuf,
 
+    /// 파일 핸들 (지연 로딩)
     pub handle: Option<BufReader<File>>,
+    /// 파일 읽기 오프셋
     pub offset: AtomicU64,
 
+    /// 파일 이름 (Windows 경로 형식)
     pub name: String,
+    /// 파일 크기 (바이트)
     pub size: u64,
+    /// 마지막 쓰기 시간
     pub last_write_time: SystemTime,
+    /// 디렉토리 여부
     pub is_dir: bool,
+    /// Unix 파일 권한
     pub perm: u32,
+    /// 읽기 전용 여부
     pub read_only: bool,
+    /// 숨김 파일 여부
     pub hidden: bool,
+    /// 시스템 파일 여부
     pub system: bool,
+    /// 보관 속성 여부
     pub archive: bool,
+    /// 일반 파일 여부
     pub normal: bool,
 }
 
 impl LocalFile {
+    /// 주어진 경로의 파일을 열고 메타데이터를 수집합니다.
+    /// 실제 파일 내용은 지연 로딩됩니다.
     pub fn try_open(relative_root: &Path, path: &Path) -> Result<Self, CliprdrError> {
         let mt = std::fs::metadata(path).map_err(|e| CliprdrError::FileError {
             path: path.to_string_lossy().to_string(),
@@ -58,13 +76,14 @@ impl LocalFile {
 
         let perm = mt.permissions().mode();
 
+        // 파일 이름을 Windows 경로 형식으로 변환합니다.
         let name = path
             .display()
             .to_string()
             .trim_start_matches('/')
             .replace('/', "\\");
 
-        // NOTE: open files lazily
+        // 파일을 지연 로딩합니다.
         let handle = None;
         let offset = AtomicU64::new(0);
 
@@ -85,9 +104,11 @@ impl LocalFile {
             normal,
         })
     }
+    /// 파일 정보를 Windows FILEDESCRIPTORW 형식의 바이너리로 변환합니다.
     pub fn as_bin(&self) -> Vec<u8> {
         let mut buf = BytesMut::with_capacity(592);
 
+        // 파일 속성을 Windows 형식의 플래그로 변환합니다.
         let read_only_flag = if self.read_only { 0x1 } else { 0 };
         let hidden_flag = if self.hidden { 0x2 } else { 0 };
         let system_flag = if self.system { 0x4 } else { 0 };

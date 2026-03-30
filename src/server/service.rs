@@ -6,48 +6,89 @@ use std::{
     time,
 };
 
+/// 원격 데스크톱 서비스의 기본 인터페이스 트레이트
+/// 모든 서비스 (비디오, 오디오, 클립보드 등)는 이 트레이트를 구현
 pub trait Service: Send + Sync {
+    /// 서비스의 이름 반환
     fn name(&self) -> String;
+    /// 새 구독자 추가 (연결)
     fn on_subscribe(&self, sub: ConnInner);
+    /// 구독자 제거 (연결 해제)
     fn on_unsubscribe(&self, id: i32);
+    /// 특정 ID가 구독 중인지 확인
     fn is_subed(&self, id: i32) -> bool;
+    /// 서비스 스레드 종료 대기
     fn join(&self);
+    /// 서비스 옵션 조회
     fn get_option(&self, opt: &str) -> Option<String>;
+    /// 서비스 옵션 설정
     fn set_option(&self, opt: &str, val: &str) -> Option<String>;
+    /// 서비스가 활성 상태인지 확인 (활성이고 구독자가 있음)
     fn ok(&self) -> bool;
 }
 
+/// 메시지 구독자의 기본 인터페이스 트레이트
 pub trait Subscriber: Default + Send + Sync + 'static {
+    /// 구독자의 고유 ID 반환
     fn id(&self) -> i32;
+    /// 구독자에게 메시지 전송
     fn send(&mut self, msg: Arc<Message>);
 }
 
+/// 서비스의 내부 상태를 관리하는 구조체
 #[derive(Default)]
 pub struct ServiceInner<T: Subscriber + From<ConnInner>> {
+    /// 서비스 이름
     name: String,
+    /// 서비스 실행 스레드의 핸들
     handle: Option<JoinHandle<()>>,
+    /// 활성 구독자 맵 (ID -> 구독자)
     subscribes: HashMap<i32, T>,
+    /// 새 구독자 맵 (스냅샷 대기 중)
     new_subscribes: HashMap<i32, T>,
+    /// 서비스 활성 상태
     active: bool,
+    /// 새 구독자 스냅샷 필요 여부
     need_snapshot: bool,
+    /// 서비스 옵션 맵
     options: HashMap<String, String>,
 }
 
+/// 서비스 상태 초기화/재설정 인터페이스 트레이트
 pub trait Reset {
+    /// 상태 초기화 (구독자 없을 때)
     fn reset(&mut self);
+    /// 상태 재초기화 (구독자 추가 시)
     fn init(&mut self) {}
 }
 
+/// 일반 서비스 템플릿 구조체
+/// 모든 원격 데스크톱 서비스의 기본 프레임워크 제공
 pub struct ServiceTmpl<T: Subscriber + From<ConnInner>>(Arc<RwLock<ServiceInner<T>>>);
+
+/// 서비스 스냅샷 처리용 래퍼 구조체
+/// 새 구독자에게 스냅샷 데이터를 먼저 전송하기 위한 임시 객체
 pub struct ServiceSwap<T: Subscriber + From<ConnInner>>(ServiceTmpl<T>);
+
+/// 일반 서비스 타입 (ConnInner 구독자 사용)
 pub type GenericService = ServiceTmpl<ConnInner>;
+
+/// 서비스 휴면 타임아웃 (밀리초) - 구독자 없을 때 대기 시간
 pub const HIBERNATE_TIMEOUT: u64 = 30;
+
+/// 최대 오류 타임아웃 (밀리초) - 오류 발생 시 최대 대기 시간
 pub const MAX_ERROR_TIMEOUT: u64 = 1_000;
+
+/// 서비스 옵션 참 값
 pub const SERVICE_OPTION_VALUE_TRUE: &str = "1";
+
+/// 서비스 옵션 거짓 값
 pub const SERVICE_OPTION_VALUE_FALSE: &str = "0";
 
+/// 추가 필드가 없는 서비스 래퍼
 #[derive(Clone)]
 pub struct EmptyExtraFieldService {
+    /// 일반 서비스 객체
     pub sp: GenericService,
 }
 

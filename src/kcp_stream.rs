@@ -14,6 +14,9 @@ use kcp_sys::{
 };
 use std::{net::SocketAddr, sync::Arc};
 
+/// KCP 스트림
+/// 
+/// KCP (KCP Fast Algorithm) 기반의 신뢰성 있는 UDP 통신 채널
 pub struct KcpStream {
     _endpoint: KcpEndpoint,
     stop_sender: Option<oneshot::Sender<()>>,

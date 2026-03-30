@@ -20,9 +20,11 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+/// Windows에서 AltGr 키 상태를 추적합니다
 #[cfg(windows)]
 static mut IS_ALT_GR: bool = false;
 
+/// 운영체제 이름 상수 (소문자)
 #[allow(dead_code)]
 const OS_LOWER_WINDOWS: &str = "windows";
 #[allow(dead_code)]
@@ -32,39 +34,44 @@ const OS_LOWER_MACOS: &str = "macos";
 #[allow(dead_code)]
 const OS_LOWER_ANDROID: &str = "android";
 
+/// 키보드가 현재 hooked 상태인지 추적합니다 (데스크톱 플랫폼)
 #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
 static KEYBOARD_HOOKED: AtomicBool = AtomicBool::new(false);
 
-// Track key down state for relative mouse mode exit shortcut.
-// macOS: Cmd+G (track G key)
-// Windows/Linux: Ctrl+Alt (track whichever modifier was pressed last)
-// This prevents the exit from retriggering on OS key-repeat.
+/// 상대 마우스 모드 종료 단축키의 키 다운 상태를 추적합니다
+/// macOS: Cmd+G (G 키 추적)
+/// Windows/Linux: Ctrl+Alt (마지막으로 누른 수정자 키 추적)
+/// 이를 통해 OS 키 반복 시 종료가 재발동되는 것을 방지합니다
 #[cfg(all(feature = "flutter", any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 static EXIT_SHORTCUT_KEY_DOWN: AtomicBool = AtomicBool::new(false);
 
-// Track whether relative mouse mode is currently active.
-// This is set by Flutter via set_relative_mouse_mode_state() and checked
-// by the rdev grab loop to determine if exit shortcuts should be processed.
+/// 상대 마우스 모드가 현재 활성화되어 있는지 추적합니다
+/// Flutter에서 set_relative_mouse_mode_state()를 통해 설정되고
+/// rdev grab 루프에서 확인되어 종료 단축키 처리 여부를 결정합니다
 #[cfg(all(feature = "flutter", any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 static RELATIVE_MOUSE_MODE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
-/// Set the relative mouse mode state from Flutter.
-/// This is called when entering or exiting relative mouse mode.
+/// Flutter에서 상대 마우스 모드 상태를 설정합니다
+/// 상대 마우스 모드 진입/종료 시 호출됩니다
 #[cfg(all(feature = "flutter", any(target_os = "windows", target_os = "macos", target_os = "linux")))]
 pub fn set_relative_mouse_mode_state(active: bool) {
     RELATIVE_MOUSE_MODE_ACTIVE.store(active, Ordering::SeqCst);
-    // Reset exit shortcut state when mode changes to avoid stale state
+    // 모드 변경 시 종료 단축키 상태를 리셋하여 오래된 상태 방지
     if !active {
         EXIT_SHORTCUT_KEY_DOWN.store(false, Ordering::SeqCst);
     }
 }
 
+/// rdev가 활성화되어 있는지 추적합니다 (Flutter 플랫폼)
 #[cfg(feature = "flutter")]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 static IS_RDEV_ENABLED: AtomicBool = AtomicBool::new(false);
 
+/// 키보드 이벤트 처리 관련 전역 상태
 lazy_static::lazy_static! {
+    /// 해제되어야 할 키 이벤트를 저장합니다
     static ref TO_RELEASE: Arc<Mutex<HashMap<Key, Event>>> = Arc::new(Mutex::new(HashMap::new()));
+    /// 현재 수정자 키(Shift, Ctrl, Alt, Meta 등)의 상태를 추적합니다
     static ref MODIFIERS_STATE: Mutex<HashMap<Key, bool>> = {
         let mut m = HashMap::new();
         m.insert(Key::ShiftLeft, false);
@@ -79,13 +86,16 @@ lazy_static::lazy_static! {
     };
 }
 
+/// 클라이언트 측 키보드 입력 처리 모듈
 pub mod client {
     use super::*;
 
+    /// 그랩 루프가 이미 시작되었는지 추적합니다
     lazy_static::lazy_static! {
         static ref IS_GRAB_STARTED: Arc<Mutex<bool>> = Arc::new(Mutex::new(false));
     }
 
+    /// 키보드 그랩 루프를 시작합니다 (한 번만 실행)
     pub fn start_grab_loop() {
         let mut lock = IS_GRAB_STARTED.lock().unwrap();
         if *lock {
@@ -95,6 +105,9 @@ pub mod client {
         *lock = true;
     }
 
+    /// 키보드 그랩 상태를 변경합니다
+    /// state: 그랩 상태 (Ready, Run, Wait, Exit)
+    /// keyboard_mode: 키보드 모드 설정
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     pub fn change_grab_status(state: GrabState, keyboard_mode: &str) {
         #[cfg(feature = "flutter")]
@@ -128,6 +141,10 @@ pub mod client {
         }
     }
 
+    /// rdev 이벤트를 키 이벤트로 변환하고 전송합니다
+    /// event: rdev 키보드 이벤트
+    /// keyboard_mode: 원격 시스템의 키보드 모드
+    /// lock_modes: 원격 시스템의 Caps Lock, Num Lock 상태
     pub fn process_event(keyboard_mode: &str, event: &Event, lock_modes: Option<i32>) {
         let keyboard_mode = get_keyboard_mode_enum(keyboard_mode);
         if is_long_press(&event) {
@@ -139,6 +156,11 @@ pub mod client {
         }
     }
 
+    /// 세션을 통해 키 이벤트를 처리하고 전송합니다
+    /// event: rdev 키보드 이벤트
+    /// keyboard_mode: 원격 시스템의 키보드 모드
+    /// lock_modes: 원격 시스템의 Caps Lock, Num Lock 상태
+    /// session: 키 이벤트를 전송할 세션
     pub fn process_event_with_session<T: InvokeUiSession>(
         keyboard_mode: &str,
         event: &Event,
@@ -155,6 +177,8 @@ pub mod client {
         }
     }
 
+    /// 현재 수정자 키 상태를 반환합니다
+    /// 전달된 인자와 추적된 상태를 조합하여 최종 상태를 반환합니다
     pub fn get_modifiers_state(
         alt: bool,
         ctrl: bool,

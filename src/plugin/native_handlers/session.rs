@@ -9,27 +9,32 @@ use flutter_rust_bridge::StreamSink;
 
 use crate::{define_method_prefix, flutter_ffi::EventToUI};
 
+/// 세션이 생성되었음을 알리는 메시지 타입
 const MSG_TO_UI_TYPE_SESSION_CREATED: &str = "session_created";
 
 use super::PluginNativeHandler;
 
+/// 세션의 RGBA 데이터를 처리하는 콜백 함수 타입
 pub type OnSessionRgbaCallback = unsafe extern "C" fn(
-    *const c_char,           // Session ID
-    *mut c_void,             // raw data
-    *mut usize,              // width
-    *mut usize,              // height,
-    *mut usize,              // stride,
-    *mut scrap::ImageFormat, // ImageFormat
+    *const c_char,           // 세션 ID
+    *mut c_void,             // 원본 데이터
+    *mut usize,              // 너비
+    *mut usize,              // 높이
+    *mut usize,              // 스트라이드
+    *mut scrap::ImageFormat, // 이미지 형식
 );
 
+/// 세션 관련 네이티브 핸들러
 #[derive(Default)]
-/// Session related handler for librustdesk core.
 pub struct PluginNativeSessionHandler {
+    /// 플러그인에서 생성한 세션 목록
     sessions: Arc<RwLock<Vec<crate::flutter::FlutterSession>>>,
+    /// 세션별 RGBA 콜백 함수
     cbs: Arc<RwLock<HashMap<String, OnSessionRgbaCallback>>>,
 }
 
 lazy_static::lazy_static! {
+    /// 세션 핸들러의 전역 인스턴스
     pub static ref SESSION_HANDLER: Arc<PluginNativeSessionHandler> = Arc::new(PluginNativeSessionHandler::default());
 }
 
@@ -120,18 +125,19 @@ impl PluginNativeHandler for PluginNativeSessionHandler {
 }
 
 impl PluginNativeSessionHandler {
+    /// 새 세션을 생성하고 Flutter에 알립니다
     fn create_session(&self, session_id: String) -> String {
         let session =
             crate::flutter::session_add(&session_id, false, false, false, "", false, "".to_owned());
         if let Ok(session) = session {
             let mut sessions = self.sessions.write().unwrap();
             sessions.push(session);
-            // push a event to notify flutter to bind a event stream for this session.
+            // Flutter이 이 세션의 이벤트 스트림을 바인드하도록 알립니다
             let mut m = HashMap::new();
             m.insert("name", MSG_TO_UI_TYPE_SESSION_CREATED);
             m.insert("session_id", &session_id);
-            // todo: APP_TYPE_DESKTOP_REMOTE is not used anymore.
-            // crate::flutter::APP_TYPE_DESKTOP_REMOTE + window id, is used for multi-window support.
+            // TODO: APP_TYPE_DESKTOP_REMOTE은 더 이상 사용되지 않습니다.
+            // crate::flutter::APP_TYPE_DESKTOP_REMOTE + 윈도우 ID가 다중 윈도우 지원에 사용됩니다.
             crate::flutter::push_global_event(
                 crate::flutter::APP_TYPE_DESKTOP_REMOTE,
                 serde_json::to_string(&m).unwrap_or("".to_string()),
@@ -142,6 +148,7 @@ impl PluginNativeSessionHandler {
         }
     }
 
+    /// 세션에 RGBA 콜백을 추가합니다
     fn add_session_hook(&self, session_id: String, cb: OnSessionRgbaCallback) {
         let sessions = self.sessions.read().unwrap();
         for session in sessions.iter() {
@@ -156,6 +163,7 @@ impl PluginNativeSessionHandler {
         }
     }
 
+    /// 세션에서 RGBA 콜백을 제거합니다
     fn remove_session_hook(&self, session_id: String) {
         let sessions = self.sessions.read().unwrap();
         for session in sessions.iter() {
@@ -165,6 +173,7 @@ impl PluginNativeSessionHandler {
         }
     }
 
+    /// 세션을 제거합니다
     fn remove_session(&self, session_id: String) {
         let _ = self.cbs.write().unwrap().remove(&session_id);
         let mut sessions = self.sessions.write().unwrap();
@@ -177,8 +186,8 @@ impl PluginNativeSessionHandler {
         }
     }
 
+    /// RGBA 데이터를 처리하는 콜백 함수
     #[inline]
-    // The callback function for rgba data
     fn session_rgba_cb(&self, session_id: String, rgb: &mut scrap::ImageRgb) {
         let cbs = self.cbs.read().unwrap();
         if let Some(cb) = cbs.get(&session_id) {
@@ -195,8 +204,8 @@ impl PluginNativeSessionHandler {
         }
     }
 
+    /// 세션의 이벤트 스트림을 등록합니다
     #[inline]
-    // The callback function for rgba data
     fn session_register_event_stream(&self, session_id: String, stream: StreamSink<EventToUI>) {
         let sessions = self.sessions.read().unwrap();
         for session in sessions.iter() {
@@ -208,11 +217,13 @@ impl PluginNativeSessionHandler {
     }
 }
 
+/// RGBA 콜백을 전달하는 래퍼 함수
 #[inline]
 fn session_rgba_cb(id: String, rgb: &mut scrap::ImageRgb) {
     SESSION_HANDLER.session_rgba_cb(id, rgb);
 }
 
+/// 세션의 이벤트 스트림을 등록하는 공개 함수
 #[inline]
 pub fn session_register_event_stream(id: String, stream: StreamSink<EventToUI>) {
     SESSION_HANDLER.session_register_event_stream(id, stream);

@@ -31,38 +31,60 @@ mod win_virtual_display;
 #[cfg(windows)]
 pub use win_virtual_display::restore_reg_connectivity;
 
+// 유효하지 않은 프라이버시 모드 연결 ID
 pub const INVALID_PRIVACY_MODE_CONN_ID: i32 = 0;
+// 프라이버시 모드 점유 오류 메시지
 pub const OCCUPIED: &'static str = "Privacy occupied by another one.";
+// 다른 연결의 프라이버시 모드 종료 오류 메시지
 pub const TURN_OFF_OTHER_ID: &'static str =
     "Failed to turn off privacy mode that belongs to someone else.";
+// 물리적 디스플레이 없음 메시지
 pub const NO_PHYSICAL_DISPLAYS: &'static str = "no_need_privacy_mode_no_physical_displays_tip";
 
+// Windows Magnifier 기반 프라이버시 모드 구현 키
 pub const PRIVACY_MODE_IMPL_WIN_MAG: &str = "privacy_mode_impl_mag";
+// Windows 화면 캡처 제외 기반 프라이버시 모드 구현 키
 pub const PRIVACY_MODE_IMPL_WIN_EXCLUDE_FROM_CAPTURE: &str =
     "privacy_mode_impl_exclude_from_capture";
+// Windows 가상 디스플레이 기반 프라이버시 모드 구현 키
 pub const PRIVACY_MODE_IMPL_WIN_VIRTUAL_DISPLAY: &str = "privacy_mode_impl_virtual_display";
 
+/// 프라이버시 모드 상태 표현
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "t", content = "c")]
 pub enum PrivacyModeState {
+    // 프라이버시 모드 종료 성공
     OffSucceeded,
+    // 원격 사용자가 프라이버시 모드 종료
     OffByPeer,
+    // 프라이버시 모드 상태 불명
     OffUnknown,
 }
 
+/// 프라이버시 모드 구현 인터페이스 트레이트
+/// 다양한 프라이버시 모드 구현(MAG, ExcludeFromCapture, VirtualDisplay 등)을 정의
 pub trait PrivacyMode: Sync + Send {
+    /// 비동기 프라이버시 모드인지 확인
     fn is_async_privacy_mode(&self) -> bool;
 
+    /// 프라이버시 모드 구현 초기화
     fn init(&self) -> ResultType<()>;
+    /// 프라이버시 모드 구현 정리
     fn clear(&mut self);
+    /// 프라이버시 모드 켜기 (true: 이미 켜져있음, false: 새로 켜짐)
     fn turn_on_privacy(&mut self, conn_id: i32) -> ResultType<bool>;
+    /// 프라이버시 모드 끄기
     fn turn_off_privacy(&mut self, conn_id: i32, state: Option<PrivacyModeState>)
         -> ResultType<()>;
 
+    /// 현재 프라이버시 모드 점유 연결 ID 반환
     fn pre_conn_id(&self) -> i32;
 
+    /// 프라이버시 모드 구현 키 반환
     fn get_impl_key(&self) -> &str;
 
+    /// 프라이버시 모드 켜기 전 연결 ID 확인
+    /// 같은 연결이면 true, 새 연결이고 가능하면 false, 점유중이면 오류
     #[inline]
     fn check_on_conn_id(&self, conn_id: i32) -> ResultType<bool> {
         let pre_conn_id = self.pre_conn_id();
@@ -75,6 +97,8 @@ pub trait PrivacyMode: Sync + Send {
         Ok(false)
     }
 
+    /// 프라이버시 모드 끄기 전 연결 ID 확인
+    /// 다른 연결이 점유중이면 오류 반환
     #[inline]
     fn check_off_conn_id(&self, conn_id: i32) -> ResultType<()> {
         let pre_conn_id = self.pre_conn_id();
@@ -166,16 +190,20 @@ lazy_static::lazy_static! {
     };
 }
 
+/// 프라이버시 모드 구현 초기화
 #[inline]
 pub fn init() -> Option<ResultType<()>> {
     Some(PRIVACY_MODE.lock().unwrap().as_ref()?.init())
 }
 
+/// 프라이버시 모드 구현 정리
 #[inline]
 pub fn clear() -> Option<()> {
     Some(PRIVACY_MODE.lock().unwrap().as_mut()?.clear())
 }
 
+/// 프라이버시 모드 구현 전환
+/// 다른 구현으로 변경하면 이전 구현 정리 후 새 구현 생성
 #[inline]
 pub fn switch(impl_key: &str) {
     let mut privacy_mode_lock = PRIVACY_MODE.lock().unwrap();
@@ -208,6 +236,10 @@ fn get_supported_impl(impl_key: &str) -> String {
     cur_impl
 }
 
+/// 프라이버시 모드 켜기 (비동기/동기 모드 자동 선택)
+/// impl_key: 사용할 프라이버시 모드 구현
+/// conn_id: 연결 ID
+/// true: 이미 켜져있음, false: 새로 켜짐
 pub async fn turn_on_privacy(impl_key: &str, conn_id: i32) -> Option<ResultType<bool>> {
     if is_async_privacy_mode() {
         turn_on_privacy_async(impl_key.to_string(), conn_id).await
@@ -216,6 +248,7 @@ pub async fn turn_on_privacy(impl_key: &str, conn_id: i32) -> Option<ResultType<
     }
 }
 
+/// 현재 프라이버시 모드가 비동기인지 확인
 #[inline]
 fn is_async_privacy_mode() -> bool {
     PRIVACY_MODE
@@ -225,6 +258,8 @@ fn is_async_privacy_mode() -> bool {
         .map_or(false, |m| m.is_async_privacy_mode())
 }
 
+/// 비동기 프라이버시 모드 켜기 (타임아웃 7.5초)
+/// 별도 스레드에서 동기 작업 수행 후 결과 반환
 #[inline]
 async fn turn_on_privacy_async(impl_key: String, conn_id: i32) -> Option<ResultType<bool>> {
     let (tx, rx) = oneshot::channel();
@@ -232,9 +267,9 @@ async fn turn_on_privacy_async(impl_key: String, conn_id: i32) -> Option<ResultT
         let res = turn_on_privacy_sync(&impl_key, conn_id);
         let _ = tx.send(res);
     });
-    // Wait at most 7.5 seconds for the result.
-    // Because it may take a long time to turn on the privacy mode with amyuni idd.
-    // Some laptops may take time to plug in a virtual display.
+    // 최대 7.5초 대기
+    // Amyuni IDD를 사용한 프라이버시 모드 켜기는 시간이 걸릴 수 있음
+    // 일부 노트북은 가상 디스플레이 연결 시 시간 소요
     match hbb_common::timeout(7500, rx).await {
         Ok(res) => match res {
             Ok(res) => res,
@@ -244,11 +279,13 @@ async fn turn_on_privacy_async(impl_key: String, conn_id: i32) -> Option<ResultT
     }
 }
 
+/// 동기 프라이버시 모드 켜기
+/// 프라이버시 모드 이미 켜졌는지 확인, 필요시 구현 전환
 fn turn_on_privacy_sync(impl_key: &str, conn_id: i32) -> Option<ResultType<bool>> {
-    // Check if privacy mode is already on or occupied by another one
+    // 프라이버시 모드 이미 켜져있거나 다른 연결이 점유중인지 확인
     let mut privacy_mode_lock = PRIVACY_MODE.lock().unwrap();
 
-    // Check or switch privacy mode implementation
+    // 지원되는 프라이버시 모드 구현 확인 또는 전환
     let impl_key = get_supported_impl(impl_key);
 
     let mut cur_impl_key = "".to_string();
@@ -324,22 +361,27 @@ async fn set_privacy_mode_state(
         .await
 }
 
+/// 지원되는 프라이버시 모드 구현 목록 반환
+/// (구현 키, 설명 메시지 키) 튜플의 벡터
 pub fn get_supported_privacy_mode_impl() -> Vec<(&'static str, &'static str)> {
     #[cfg(target_os = "windows")]
     {
         let mut vec_impls = Vec::new();
 
+        // ExcludeFromCapture 지원 (Windows 10 2004+)
         if win_exclude_from_capture::is_supported() {
             vec_impls.push((
                 PRIVACY_MODE_IMPL_WIN_EXCLUDE_FROM_CAPTURE,
                 "privacy_mode_impl_mag_tip",
             ));
         } else {
+            // Windows Magnifier 지원
             if display_service::is_privacy_mode_mag_supported() {
                 vec_impls.push((PRIVACY_MODE_IMPL_WIN_MAG, "privacy_mode_impl_mag_tip"));
             }
         }
 
+        // 가상 디스플레이 지원 (RustDesk 서비스 설치 필요)
         if is_installed() && crate::platform::windows::is_self_service_running() {
             vec_impls.push((
                 PRIVACY_MODE_IMPL_WIN_VIRTUAL_DISPLAY,

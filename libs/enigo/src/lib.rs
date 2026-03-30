@@ -1,42 +1,35 @@
-//! Enigo lets you simulate mouse and keyboard input-events as if they were
-//! made by the actual hardware. The goal is to make it available on different
-//! operating systems like Linux, macOS and Windows – possibly many more but
-//! [Redox](https://redox-os.org/) and *BSD are planned. Please see the
-//! [Repo](https://github.com/enigo-rs/enigo) for the current status.
+//! Enigo는 실제 하드웨어에 의해 생성된 것처럼 마우스와 키보드 입력 이벤트를 시뮬레이션합니다.
+//! 이 라이브러리는 Linux, macOS, Windows 등 다양한 운영 체제에서 사용 가능하도록 하는 것을 목표로 합니다.
+//! [Repo](https://github.com/enigo-rs/enigo)에서 현재 상태를 확인할 수 있습니다.
 //!
-//! I consider this library in an early alpha status, the API will change in
-//! in the future. The keyboard handling is far from being very usable. I plan
-//! to build a simple
-//! [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)
-//! that will resemble something like:
+//! 이 라이브러리는 초기 알파 상태이므로 API는 향후 변경될 수 있습니다.
+//! 키보드 처리는 아직 개선이 필요합니다.
+//! 향후 다음과 같은 간단한
+//! [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)을 구현할 계획입니다:
 //!
 //! `"hello {+SHIFT}world{-SHIFT} and break line{ENTER}"`
 //!
-//! The current status is that you can just print
-//! [unicode](http://unicode.org/)
-//! characters like [emoji](http://getemoji.com/) without the `{+SHIFT}`
-//! [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)
-//! or any other "special" key on the Linux, macOS and Windows operating system.
+//! 현재 상태에서는 `{+SHIFT}` [DSL](https://en.wikipedia.org/wiki/Domain-specific_language)이나
+//! 다른 "특수" 키 없이 [unicode](http://unicode.org/) 문자와
+//! [emoji](http://getemoji.com/)를 Linux, macOS, Windows에서 입력할 수 있습니다.
 //!
-//! Possible use cases could be for testing user interfaces on different
-//! platforms,
-//! building remote control applications or just automating tasks for user
-//! interfaces unaccessible by a public API or scripting language.
+//! 가능한 사용 사례는 다양한 플랫폼에서 사용자 인터페이스 테스트,
+//! 원격 제어 애플리케이션 구축 또는 공개 API나 스크립팅 언어로 접근할 수 없는
+//! 사용자 인터페이스 작업 자동화입니다.
 //!
-//! For the keyboard there are currently two modes you can use. The first mode
-//! is represented by the [key_sequence]() function
-//! its purpose is to simply write unicode characters. This is independent of
-//! the keyboardlayout. Please note that
-//! you're not be able to use modifier keys like Control
-//! to influence the outcome. If you want to use modifier keys to e.g.
-//! copy/paste
-//! use the Layout variant. Please note that this is indeed layout dependent.
+//! 키보드의 경우 현재 두 가지 모드를 사용할 수 있습니다.
+//! 첫 번째 모드는 [key_sequence]() 함수로 표현되며,
+//! 목적은 단순히 유니코드 문자를 입력하는 것입니다.
+//! 이는 키보드 레이아웃과 무관합니다.
+//! 제어(Control) 같은 수정자 키를 사용하여 결과에 영향을 미칠 수는 없습니다.
+//! 수정자 키를 사용하려면 (예: 복사/붙여넣기)
+//! Layout 변형을 사용하세요. 이는 레이아웃에 따라 다릅니다.
 
-//! # Examples
+//! # 예시
 //! ```no_run
 //! use enigo::*;
 //! let mut enigo = Enigo::new();
-//! //paste
+//! // 붙여넣기
 //! enigo.key_down(Key::Control);
 //! enigo.key_click(Key::Layout('v'));
 //! enigo.key_up(Key::Control);
@@ -57,7 +50,7 @@
 #[macro_use]
 extern crate objc;
 
-// TODO(dustin) use interior mutability not &mut self
+// TODO(dustin) 가변 참조(&mut self) 대신 내부 가변성(interior mutability)을 사용하세요
 
 #[cfg(target_os = "windows")]
 mod win;
