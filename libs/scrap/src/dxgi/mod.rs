@@ -25,17 +25,13 @@ use crate::RotationMode::*;
 use crate::{AdapterDevice, Frame, PixelBuffer};
 use std::ffi::c_void;
 
-/// COM 인터페이스 포인터를 관리하는 스마트 포인터
-/// 드롭 시 자동으로 COM 객체의 Release() 메서드를 호출합니다.
 pub struct ComPtr<T>(*mut T);
 impl<T> ComPtr<T> {
-    /// 포인터가 null인지 확인합니다.
     fn is_null(&self) -> bool {
         self.0.is_null()
     }
 }
 impl<T> Drop for ComPtr<T> {
-    /// ComPtr이 드롭될 때 COM 객체의 참조 카운트를 감소시킵니다.
     fn drop(&mut self) {
         unsafe {
             if !self.is_null() {
@@ -45,40 +41,22 @@ impl<T> Drop for ComPtr<T> {
     }
 }
 
-/// Windows DXGI를 사용한 화면 캡처기
-/// Direct3D 11과 DXGI를 활용하여 GPU 가속 화면 캡처를 수행합니다.
 pub struct Capturer {
-    // Direct3D 11 디바이스
     device: ComPtr<ID3D11Device>,
-    // 디스플레이 정보
     display: Display,
-    // Direct3D 11 컨텍스트
     context: ComPtr<ID3D11DeviceContext>,
-    // DXGI 출력 복제 (화면 캡처 메인 기능)
     duplication: ComPtr<IDXGIOutputDuplication>,
-    // 데스크톱 이미지가 시스템 메모리에 있는지 여부
     fastlane: bool,
-    // DXGI 서피스 (프레임 매핑)
     surface: ComPtr<IDXGISurface>,
-    // Direct3D 텍스처 (프레임 데이터)
     texture: ComPtr<ID3D11Texture2D>,
-    // 화면 너비
     width: usize,
-    // 화면 높이
     height: usize,
-    // 회전된 프레임 데이터 (회전이 필요한 경우)
     rotated: Vec<u8>,
-    // GDI 캡처기 (DXGI 실패 시 폴백)
     gdi_capturer: Option<CapturerGDI>,
-    // GDI 캡처 버퍼
     gdi_buffer: Vec<u8>,
-    // 프레임 비교용 저장된 데이터 (더 빠른 비교 및 복사를 위해)
-    saved_raw_data: Vec<u8>,
-    // 텍스처로 출력할지 여부 (VRAM 피처)
+    saved_raw_data: Vec<u8>, // for faster compare and copy
     output_texture: bool,
-    // 어댑터 설명 (디바이스 정보)
     adapter_desc1: DXGI_ADAPTER_DESC1,
-    // 회전 처리용 구조체
     rotate: Rotate,
 }
 
@@ -627,15 +605,12 @@ impl Drop for Capturer {
     }
 }
 
-/// DXGI를 사용하여 시스템의 모든 디스플레이를 열거합니다.
 pub struct Displays {
-    // DXGI 팩토리 (어댑터/디스플레이 열거용)
     factory: ComPtr<IDXGIFactory1>,
-    // 현재 어댑터
     adapter: ComPtr<IDXGIAdapter1>,
-    /// 현재 어댑터의 인덱스
+    /// Index of the CURRENT adapter.
     nadapter: UINT,
-    /// 다음에 가져올 디스플레이의 인덱스
+    /// Index of the NEXT display to fetch.
     ndisplay: UINT,
 }
 
@@ -805,21 +780,16 @@ impl Iterator for Displays {
     }
 }
 
-/// DXGI 디스플레이 정보를 나타내는 구조체
 pub struct Display {
-    // DXGI 출력 (디스플레이)
     inner: ComPtr<IDXGIOutput1>,
-    // 출력을 소유한 어댑터
     adapter: ComPtr<IDXGIAdapter1>,
-    // 출력 설명 (해상도, 위치, 회전 등)
     desc: DXGI_OUTPUT_DESC,
-    // GDI 캡처를 사용하는지 여부
     gdi: bool,
 }
 
-// 업데이트된 영역에 최적화됨:
+// optimized for updated region
 // https://github.com/dchapyshev/aspia/blob/master/source/base/desktop/win/dxgi_output_duplicator.cc
-// 회전 처리:
+// rotation
 // https://github.com/bryal/dxgcap-rs/blob/master/src/lib.rs
 
 impl Display {
@@ -905,16 +875,10 @@ fn wrap_hresult(x: HRESULT) -> io::Result<()> {
     .into())
 }
 
-/// Direct3D 11 비디오 프로세서를 사용한 화면 회전 처리
 struct Rotate {
-    // Direct3D 11 비디오 컨텍스트
     video_context: ComPtr<ID3D11VideoContext>,
-    // Direct3D 11 비디오 디바이스
     video_device: ComPtr<ID3D11VideoDevice>,
-    // 비디오 프로세서 열거자
     video_processor_enum: ComPtr<ID3D11VideoProcessorEnumerator>,
-    // 비디오 프로세서 (회전 처리용)
     video_processor: ComPtr<ID3D11VideoProcessor>,
-    // 회전된 프레임 텍스처와 생성 여부
     texture: (ComPtr<ID3D11Texture2D>, bool),
 }

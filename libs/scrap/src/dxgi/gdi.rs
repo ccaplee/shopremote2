@@ -21,21 +21,13 @@ use winapi::{
     },
 };
 
-/// 픽셀당 바이트 수 (ARGB: 4바이트)
 const PIXEL_WIDTH: i32 = 4;
 
-/// Windows GDI를 사용한 화면 캡처기
-/// DXGI가 실패했을 때 폴백으로 사용되며, 모든 Windows 버전에서 작동합니다.
 pub struct CapturerGDI {
-    // 화면의 디바이스 컨텍스트
     screen_dc: HDC,
-    // 호환 디바이스 컨텍스트
     dc: HDC,
-    // 호환 비트맵 (화면 데이터 저장소)
     bmp: HBITMAP,
-    // 화면 너비
     width: i32,
-    // 화면 높이
     height: i32,
 }
 
@@ -95,10 +87,8 @@ impl CapturerGDI {
         }
     }
 
-    /// 현재 프레임을 캡처하여 BGRA 형식으로 변환합니다.
     pub fn frame(&self, data: &mut Vec<u8>) -> Result<(), Box<dyn std::error::Error>> {
         unsafe {
-            // 화면을 호환 비트맵으로 복사
             let res = BitBlt(
                 self.dc,
                 0,
@@ -108,16 +98,14 @@ impl CapturerGDI {
                 self.screen_dc,
                 0,
                 0,
-                SRCCOPY | CAPTUREBLT, // CAPTUREBLT: 레이어드 윈도우 캡처 활성화 (커서 깜빡임 발생)
+                SRCCOPY | CAPTUREBLT, // CAPTUREBLT enable layered window but also make cursor blinking
             );
             if res == 0 {
-                return Err("Windows 버퍼로 화면 복사 실패".into());
+                return Err("Failed to copy screen to Windows buffer".into());
             }
 
-            // 버퍼 크기 계산
             let stride = self.width * PIXEL_WIDTH;
             let size: usize = (stride * self.height) as usize;
-            // 임시 버퍼 할당 (미러링 후 회전 처리용)
             let mut data1: Vec<u8> = Vec::with_capacity(size);
             data1.set_len(size);
             data.resize(size, 0);
@@ -144,7 +132,7 @@ impl CapturerGDI {
                 }],
             };
 
-            // 비트맵 비트를 Vec로 복사
+            // copy bits into Vec
             let res = GetDIBits(
                 self.dc,
                 self.bmp,
@@ -155,9 +143,8 @@ impl CapturerGDI {
                 DIB_RGB_COLORS,
             );
             if res == 0 {
-                return Err("GetDIBits 실패".into());
+                return Err("GetDIBits failed".into());
             }
-            // GDI는 Y축이 반대이므로 미러링 처리
             crate::common::ARGBMirror(
                 data.as_ptr(),
                 stride,
@@ -166,7 +153,6 @@ impl CapturerGDI {
                 self.width,
                 self.height,
             );
-            // 최종 정렬을 위해 180도 회전 (또는 X, Y 축 플립과 같음)
             crate::common::ARGBRotate(
                 data1.as_ptr(),
                 stride,

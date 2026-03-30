@@ -11,33 +11,26 @@ use tracing::warn;
 use hbb_common::platform::linux::{get_wayland_displays, WaylandDisplayInfo};
 
 lazy_static! {
-    /// 캐시된 Wayland 디스플레이 정보
     static ref DISPLAYS: Mutex<Option<Arc<Displays>>> = Mutex::new(None);
 }
 
-/// 명령어 실행 타임아웃 (일부 명령어가 hang할 수 있음)
 const COMMAND_TIMEOUT: Duration = Duration::from_millis(1000);
 
-/// Wayland 디스플레이 정보를 저장하는 구조체
 pub struct Displays {
-    // 주 디스플레이 인덱스
     pub primary: usize,
-    // 모든 디스플레이 정보 목록
     pub displays: Vec<WaylandDisplayInfo>,
 }
 
-/// 주어진 타임아웃 내에 명령어를 실행합니다.
-/// 일부 명령어(예: kscreen-doctor)는 특정 환경에서 hang될 수 있으므로 타임아웃 처리가 필요합니다.
-/// 알려진 hang 케이스:
-/// 1. Archlinux에서 GNOME과 KDE Plasma가 모두 설치됨
-/// 2. GNOME 세션에서 kscreen-doctor -o 실행
+// We need this helper to run commands with a timeout, as some commands may hang.
+// `kscreen-doctor -o` is known to hang when:
+// 1. On Archlinux, Both GNOME and KDE Plasma are installed.
+// 2. Run this command in a GNOME session.
 fn run_with_timeout(
     program: &str,
     args: &[&str],
     timeout: Duration,
     label: &str,
 ) -> Option<Output> {
-    // 명령어 실행
     let mut child = Command::new(program)
         .args(args)
         .stdout(Stdio::piped())
@@ -46,30 +39,27 @@ fn run_with_timeout(
         .ok()?;
 
     let start = Instant::now();
-    // 타임아웃 또는 완료 대기
     loop {
         if let Ok(Some(_)) = child.try_wait() {
             break;
         }
         if start.elapsed() >= timeout {
-            warn!("{} 명령어가 {:?} 후 타임아웃됨", label, timeout);
-            // 프로세스 강제 종료
+            warn!("{} command timed out after {:?}", label, timeout);
             if let Err(e) = child.kill() {
-                warn!("'{}' 자식 프로세스 종료 실패: {}", label, e);
+                warn!("Failed to kill child process for '{}': {}", label, e);
             }
             if let Err(e) = child.wait() {
-                warn!("'{}' 자식 프로세스 대기 실패: {}", label, e);
+                warn!("Failed to wait for child process for '{}': {}", label, e);
             }
             return None;
         }
         std::thread::sleep(Duration::from_millis(30));
     }
 
-    // 명령어 결과 확인
     match child.wait_with_output() {
         Ok(output) => {
             if !output.status.success() {
-                warn!("{} 명령어가 실패함 (상태: {})", label, output.status);
+                warn!("{} command failed with status: {}", label, output.status);
                 return None;
             }
             Some(output)
@@ -78,11 +68,10 @@ fn run_with_timeout(
     }
 }
 
-/// xrandr을 사용하여 주 디스플레이를 찾습니다.
-/// 주의사항:
-/// 1. XWayland가 실행 중일 때만 작동합니다.
-/// 2. 배포판에 기본적으로 xrandr이 설치되지 않을 수 있습니다.
-/// 3. xrandr이 "primary"를 출력하지 않을 수 있습니다 (예: openSUSE Leap 15.6 KDE Plasma).
+// There are some limitations with xrandr method:
+// 1. It only works when XWayland is running.
+// 2. The distro may not have xrandr installed by default.
+// 3. xrandr may not report "primary" in its output. eg. openSUSE Leap 15.6 KDE Plasma.
 fn try_xrandr_primary() -> Option<String> {
     let output = Command::new("xrandr").output().ok()?;
     if !output.status.success() {
@@ -90,10 +79,8 @@ fn try_xrandr_primary() -> Option<String> {
     }
 
     let text = String::from_utf8_lossy(&output.stdout);
-    // "primary"과 "connected"가 모두 포함된 줄 찾기
     for line in text.lines() {
         if line.contains("primary") && line.contains("connected") {
-            // 줄의 첫 번째 필드(디스플레이 이름) 반환
             if let Some(name) = line.split_whitespace().next() {
                 return Some(name.to_string());
             }
@@ -102,9 +89,7 @@ fn try_xrandr_primary() -> Option<String> {
     None
 }
 
-/// kscreen-doctor를 사용하여 주 디스플레이를 찾습니다 (KDE Plasma 환경).
 fn try_kscreen_primary() -> Option<String> {
-    // KDE 세션이 아니면 건너뛰기
     if !hbb_common::platform::linux::is_kde_session() {
         return None;
     }

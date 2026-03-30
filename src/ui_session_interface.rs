@@ -67,8 +67,8 @@ pub struct Session<T: InvokeUiSession> {
     pub last_change_display: Arc<Mutex<ChangeDisplayRecord>>,
     pub connection_round_state: Arc<Mutex<ConnectionRoundState>>,
     pub printer_names: Arc<RwLock<HashMap<i32, String>>>,
-    // 세션이 재연결되었는지 여부를 나타냅니다.
-    // 재연결 후 파일 전송을 자동으로 시작하는 데 사용됩니다.
+    // Indicate whether the session is reconnected.
+    // Used to auto start file transfer after reconnection.
     pub reconnect_count: Arc<AtomicUsize>,
     pub last_audit_note: Arc<Mutex<String>>,
     pub audit_guid: Arc<Mutex<String>>,
@@ -279,16 +279,16 @@ impl<T: InvokeUiSession> Session<T> {
         }
     }
 
-    // 주의: 이 함수는 피어 정보를 받은 후에 호출해야 합니다.
+    // Caution: This function must be called after peer info is received.
     pub fn get_keyboard_mode(&self) -> String {
         let mode = self.lc.read().unwrap().keyboard_mode.clone();
         let keyboard_mode = KeyboardMode::from_str(&mode);
 
-        // 참고: 피어 정보를 받기 전에 peer_version은 0입니다.
+        // Note: peer_version is 0 before peer info is received.
         let peer_version = self.get_peer_version();
         let platform = self.peer_platform();
 
-        // 저장된 키보드 모드는 이 버전에 여전히 존재합니다.
+        // Saved keyboard mode still exists in this version.
         if let Ok(mode) = keyboard_mode {
             if is_keyboard_mode_supported(&mode, peer_version, &platform) {
                 return mode.to_string();
@@ -481,7 +481,7 @@ impl<T: InvokeUiSession> Session<T> {
         if value != "custom" {
             let last_auto_fps = self.lc.read().unwrap().last_auto_fps;
             if last_auto_fps.unwrap_or(usize::MAX) >= 30 {
-                // 사용자 정의 품질이 아닌 경우 30fps를 사용합니다
+                // non custom quality use 30 fps
                 let msg = self.lc.write().unwrap().set_custom_fps(30, false);
                 self.send(Data::Message(msg));
             }
@@ -763,7 +763,7 @@ impl<T: InvokeUiSession> Session<T> {
     }
 
     pub fn send_key_event(&self, evt: &KeyEvent) {
-        // 모드: legacy(0), map(1), translate(2), auto(3)
+        // mode: legacy(0), map(1), translate(2), auto(3)
 
         let mut msg = evt.clone();
         self.swap_modifier_key(&mut msg);
@@ -783,7 +783,7 @@ impl<T: InvokeUiSession> Session<T> {
         self.send(Data::Message(msg_out));
     }
 
-    // 터미널 메서드
+    // Terminal methods
     pub fn open_terminal(&self, terminal_id: i32, rows: u32, cols: u32) {
         let mut action = TerminalAction::new();
         action.set_open(OpenTerminal {
@@ -878,7 +878,7 @@ impl<T: InvokeUiSession> Session<T> {
         keyboard::client::change_grab_status(GrabState::Wait, &keyboard_mode);
     }
 
-    // flutter만 해당 TODO 새 입력
+    // flutter only TODO new input
     pub fn input_key(
         &self,
         name: &str,
@@ -960,7 +960,7 @@ impl<T: InvokeUiSession> Session<T> {
 
         #[cfg(not(target_os = "windows"))]
         let key = rdev::key_from_code(position_code) as rdev::Key;
-        // Windows는 특별한 처리가 필요합니다
+        // Windows requires special handling
         #[cfg(target_os = "windows")]
         let key = rdev::get_win_key(platform_code, position_code);
 
@@ -1056,8 +1056,8 @@ impl<T: InvokeUiSession> Session<T> {
             target_os = "linux"
         )))]
         let platform_code: u32 = position_code as _;
-        // 번역 모드용입니다.
-        // AltGr인 경우 플랫폼 코드(keysym)를 설정해야 합니다.
+        // For translate mode.
+        // We need to set the platform code (keysym) if is AltGr.
         // https://github.com/rustdesk/rustdesk/blob/07cf1b4db5ef2f925efd3b16b87c33ce03c94809/src/keyboard.rs#L1029
         // https://github.com/flutter/flutter/issues/153811
         #[cfg(target_os = "linux")]
@@ -1076,7 +1076,7 @@ impl<T: InvokeUiSession> Session<T> {
                 Some(rdev::UnicodeInfo {
                     name: Some(character.to_string()),
                     unicode: character.encode_utf16().collect(),
-                    // is_dead: flutter가 지금까지 데드 코드를 감지할 수 없기 때문에 여기서는 올바르지 않습니다.
+                    // is_dead: is not correct here, because flutter cannot detect deadcode for now.
                     is_dead: false,
                 })
             },
@@ -1093,7 +1093,7 @@ impl<T: InvokeUiSession> Session<T> {
         keyboard::client::process_event_with_session(keyboard_mode, &event, Some(lock_modes), self);
     }
 
-    // flutter만 해당 TODO 새 입력
+    // flutter only TODO new input
     fn _input_key(
         &self,
         key: Key,
@@ -1225,7 +1225,7 @@ impl<T: InvokeUiSession> Session<T> {
             }
         }
 
-        // MOUSE_TYPE_MASK를 사용하여 이벤트 유형을 한 번 계산하고 재사용합니다
+        // Compute event type once using MOUSE_TYPE_MASK for reuse
         let event_type = mask & MOUSE_TYPE_MASK;
         let (x, y) = if event_type == MOUSE_TYPE_WHEEL || event_type == MOUSE_TYPE_TRACKPAD {
             self.get_scroll_xy((x, y))
@@ -1250,8 +1250,8 @@ impl<T: InvokeUiSession> Session<T> {
         }
 
         send_mouse(mask, x, y, alt, ctrl, shift, command, self);
-        // macOS에서 ctrl + 왼쪽 버튼 누름 = 오른쪽 버튼 누름, 올라감이 발생하지 않으므로 다음을 수행해야 합니다:
-        // 피어가 macOS가 아닌 경우 직접 올라감을 발생시킵니다
+        // on macos, ctrl + left button down = right button down, up won't emit, so we need to
+        // emit up myself if peer is not macos
         // to-do: how about ctrl + left from win to macos
         if cfg!(target_os = "macos") {
             let buttons = mask >> 3;
@@ -1291,15 +1291,15 @@ impl<T: InvokeUiSession> Session<T> {
         let cloned = self.clone();
         *cloned.audit_guid.lock().unwrap() = String::new();
         *cloned.last_audit_note.lock().unwrap() = String::new();
-        // true인 경우에만 재정의합니다
+        // override only if true
         if true == force_relay {
             self.lc.write().unwrap().force_relay = true;
         }
         self.lc.write().unwrap().peer_info = None;
         self.reconnect_count.fetch_add(1, Ordering::SeqCst);
         let mut lock = self.thread.lock().unwrap();
-        // 이전 스레드를 조인할 필요가 없습니다. 자동으로 종료됩니다.
-        // 그리고 이전 스레드는 중요한 상태를 변경하지 않습니다.
+        // No need to join the previous thread, because it will exit automatically.
+        // And the previous thread will not change important states.
         *lock = Some(std::thread::spawn(move || {
             io_loop(cloned, round);
         }));
@@ -1403,9 +1403,9 @@ impl<T: InvokeUiSession> Session<T> {
             if let Some(stripped) = job_str.strip_suffix('}') {
                 format!(r#"{},"auto_start": true}}"#, stripped).into()
             } else {
-                // 정상적인 경우 도달할 수 없습니다
+                // unreachable in normal cases
                 log::warn!(
-                    "The last character is not '}}': {}, auto start is 무시하기d on flutter",
+                    "The last character is not '}}': {}, auto start is ignored on flutter",
                     job_str
                 );
                 Some(job_str.to_owned())
@@ -1419,12 +1419,12 @@ impl<T: InvokeUiSession> Session<T> {
         self.clear_all_jobs();
         let pc = self.load_config();
         if pc.transfer.write_jobs.is_empty() && pc.transfer.read_jobs.is_empty() {
-            // 마지막 작업이 없습니다
+            // no last jobs
             return;
         }
         let reconnect_count_thr = if cfg!(feature = "flutter") { 0 } else { 1 };
         let is_reconnected = self.reconnect_count.load(Ordering::SeqCst) > reconnect_count_thr;
-        // 할 일: 확인 대화 상자를 추가할 수 있습니다
+        // TODO: can add a confirm dialog
         let mut cnt = 1;
         for job_str in pc.transfer.read_jobs.iter() {
             if !job_str.is_empty() {
@@ -1519,7 +1519,7 @@ impl<T: InvokeUiSession> Session<T> {
                 ) {
                     Some((display.width, display.height))
                 } else {
-                    // 디스플레이 원점이 변경되었거나 다른 이벤트입니다.
+                    // display origin is changed, or some other events.
                     None
                 };
                 self.lc
@@ -1813,7 +1813,7 @@ impl<T: InvokeUiSession> Interface for Session<T> {
             );
         }
         self.update_privacy_mode();
-        // 최근 피어를 저장한 다음 flutter에 이벤트를 푸시합니다. 따라서 flutter는 피어 페이지를 새로 고칠 수 있습니다.
+        // Save recent peers, then push event to flutter. So flutter can refresh peer page.
         self.lc.write().unwrap().handle_peer_info(&pi);
         self.set_peer_info(&pi);
         if self.is_file_transfer() {

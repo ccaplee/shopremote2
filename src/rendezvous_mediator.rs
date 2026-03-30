@@ -43,10 +43,6 @@ static MANUAL_RESTARTED: AtomicBool = AtomicBool::new(false);
 static SENT_REGISTER_PK: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone)]
-/// 랑데부 중재자 구조체
-/// 
-/// 랑데부 서버와의 통신을 관리하고 피어 연결을 중개합니다.
-/// UDP/TCP 연결을 통해 피어 등록, 펀치홀, 릴레이 요청을 처리합니다.
 pub struct RendezvousMediator {
     addr: TargetAddr<'static>,
     host: String,
@@ -55,17 +51,12 @@ pub struct RendezvousMediator {
 }
 
 impl RendezvousMediator {
-/// 랑데부 중재자를 재시작합니다.
     pub fn restart() {
         SHOULD_EXIT.store(true, Ordering::SeqCst);
         MANUAL_RESTARTED.store(true, Ordering::SeqCst);
         log::info!("server restart");
     }
 
-/// 모든 랑데부 서버 연결을 시작합니다.
-/// 
-/// 각 랑데부 서버에 대해 TCP 또는 UDP 연결을 수행합니다.
-/// 연결 실패 시 자동으로 재연결을 시도합니다.
     pub async fn start_all() {
         crate::test_nat_type();
         if config::is_outgoing_only() {
@@ -96,7 +87,7 @@ impl RendezvousMediator {
                 allow_err!(super::lan::start_listening());
             });
         }
-        // 헤드리스 함수가 허용되지 않을 때 xdesktop 관리자를 실행하는 것이 괜찮습니다.
+        // It is ok to run xdesktop manager when the headless function is not allowed.
         #[cfg(target_os = "linux")]
         if crate::is_server() {
             crate::platform::linux_desktop_manager::start_xdesktop();
@@ -119,16 +110,16 @@ impl RendezvousMediator {
                     futs.push(tokio::spawn(async move {
                         if let Err(err) = Self::start(server, host).await {
                             let err = format!("rendezvous mediator error: {err}");
-                            // 사용자 재부팅 시 아래 오류가 발생할 수 있으며, 너무 오래 대기하면
-                            // (CONNECT_TIMEOUT 18초) 사용자가 버그가 있다고 생각하게 됩니다
+                            // When user reboot, there might be below error, waiting too long
+                            // (CONNECT_TIMEOUT 18s) will make user think there is bug
                             if err.contains("10054") || err.contains("11001") {
-                                // 알려진 호스트가 없습니다. (OS 오류 11001)
-                                // 기존 연결이 원격 호스트에 의해 강제로 닫혔습니다. (OS 오류 10054): UDP에서도 발생합니다
+                                // No such host is known. (os error 11001)
+                                // An existing connection was forcibly closed by the remote host. (os error 10054): also happens for UDP
                                 *timeout.write().unwrap() = 3000;
                             }
                             log::error!("{err}");
                         }
-                        // 한 연결이 종료되면 다른 모든 연결도 종료되도록 보장합니다.
+                        // SHOULD_EXIT here is to ensure once one exits, the others also exit.
                         SHOULD_EXIT.store(true, Ordering::SeqCst);
                     }));
                 }
@@ -163,13 +154,6 @@ impl RendezvousMediator {
             .unwrap_or(host.to_owned())
     }
 
-/// UDP를 통해 랑데부 서버에 연결합니다.
-/// 
-/// # 인자
-/// * `server` - 서버 인스턴스
-/// * `host` - 랑데부 서버 주소
-/// 
-/// 피어 등록을 주기적으로 반복하고 서버의 응답을 처리합니다.
     pub async fn start_udp(server: ServerPtr, host: String) -> ResultType<()> {
         let host = check_port(&host, RENDEZVOUS_PORT);
         log::info!("start udp: {host}");
@@ -229,12 +213,12 @@ impl RendezvousMediator {
                             if let Ok(msg) = Message::parse_from_bytes(&bytes) {
                                 rz.handle_resp(msg.union, Sink::Framed(&mut socket, &addr), &server, &mut update_latency).await?;
                             } else {
-                                log::debug!("Protobuf이 아닌 메시지 바이트를 수신했습니다: {:?}", bytes);
+                                log::debug!("Non-protobuf message bytes received: {:?}", bytes);
                             }
                         },
-                        Some(Err(e)) => bail!("다음 수신 실패: {}", e),  // SOCKS5 TCP 연결이 끊겼을 수 있습니다
+                        Some(Err(e)) => bail!("Failed to receive next: {}", e),  // maybe socks5 tcp disconnected
                         None => {
-                            bail!("소켓이 수신되지 않았습니다. SOCKS5 서버가 다운되었을 수 있습니다.");
+                            bail!("Socket receive none. Maybe socks5 server is down.");
                         },
                     }
                 },
@@ -245,9 +229,9 @@ impl RendezvousMediator {
                     let now = Some(Instant::now());
                     let expired = last_register_resp.map(|x| x.elapsed().as_millis() as i64 >= REG_INTERVAL).unwrap_or(true);
                     let timeout = last_register_sent.map(|x| x.elapsed().as_millis() as i64 >= reg_timeout).unwrap_or(false);
-                    // Android에서 강제 연결을 위한 웨이크업 트리거를 추가하기 전에 지수 백오프를 임시로 비활성화합니다
+                    // temporarily disable exponential backoff for android before we add wakeup trigger to force connect in android
                     #[cfg(not(any(target_os = "android", target_os = "ios")))]
-                    if crate::using_public_server() { // 공개 서버에서만 이것을 켜십시오. DDNS 자체 호스팅 사용자에게 도움이 될 수 있습니다.
+                    if crate::using_public_server() { // only turn on this for public server, may help DDNS self-hosting user.
                         if timeout && reg_timeout < MAX_REG_TIMEOUT {
                             reg_timeout += MIN_REG_TIMEOUT;
                         }
@@ -259,8 +243,8 @@ impl RendezvousMediator {
                                 Config::update_latency(&host, -1);
                                 old_latency = 0;
                                 if last_dns_check.elapsed().as_millis() as i64 > DNS_INTERVAL {
-                                    // 네트워크 재연결 (다이얼 IP 네트워크)의 경우,
-                                    // 네트워크 복구 후 이전 UDP 소켓이 더 이상 작동하지 않습니다
+                                    // in some case of network reconnect (dial IP network),
+                                    // old UDP socket not work any more after network recover
                                     if let Some((s, new_addr)) = socket_client::rebind_udp_for(&rz.host).await? {
                                         socket = s;
                                         rz.addr = new_addr.clone();
@@ -282,17 +266,8 @@ impl RendezvousMediator {
         Ok(())
     }
 
-/// 랑데부 서버의 응답을 처리합니다.
-    /// 
-    /// # 처리 가능한 메시지
-    /// - RegisterPeerResponse: 피어 등록 응답
-    /// - RegisterPkResponse: 공개키 등록 응답
-    /// - PunchHole: NAT 펀칭 요청
-    /// - RequestRelay: 릴레이 연결 요청
-    /// - FetchLocalAddr: 로컬 주소 조회 요청
-    /// - ConfigureUpdate: 설정 업데이트 알림
     #[inline]
-    async fn handle_resp()
+    async fn handle_resp(
         &mut self,
         msg: Option<rendezvous_message::Union>,
         sink: Sink<'_>,
@@ -364,13 +339,6 @@ impl RendezvousMediator {
         Ok(())
     }
 
-/// TCP를 통해 랑데부 서버에 연결합니다.
-/// 
-/// # 인자
-/// * `server` - 서버 인스턴스
-/// * `host` - 랑데부 서버 주소
-/// 
-/// WebSocket 또는 프록시 사용 시 TCP 연결을 사용합니다.
     pub async fn start_tcp(server: ServerPtr, host: String) -> ResultType<()> {
         let host = check_port(&host, RENDEZVOUS_PORT);
         log::info!("start tcp: {}", hbb_common::websocket::check_ws(&host));
@@ -386,7 +354,7 @@ impl RendezvousMediator {
         let mut timer = crate::rustdesk_interval(interval(crate::TIMER_OUT));
         let mut last_register_sent: Option<Instant> = None;
         let mut last_recv_msg = Instant::now();
-        // 더 이상 여러 랑데부 서버에 연결을 지원하지 않으므로 여기서 전역 변수를 사용할 수 있습니다.
+        // we won't support connecting to multiple rendzvous servers any more, so we can use a global variable here.
         Config::set_host_key_confirmed(&rz.host_prefix, false);
         loop {
             let mut update_latency = || {
@@ -399,12 +367,12 @@ impl RendezvousMediator {
             select! {
                 res = conn.next() => {
                     last_recv_msg = Instant::now();
-                    let bytes = res.ok_or_else(|| anyhow::anyhow!("랑데부 연결이 피어에 의해 재설정되었습니다"))??;
+                    let bytes = res.ok_or_else(|| anyhow::anyhow!("Rendezvous connection is reset by the peer"))??;
                     if bytes.is_empty() {
-                        // 빈번한 register_pk 수정 후 WebSocket의 경우 nginx는 proxy_read_timeout을 60초 이상으로 설정해야 합니다. 예: 120초
+                        // After fixing frequent register_pk, for websocket, nginx need to set proxy_read_timeout to more than 60 seconds, eg: 120s
                         // https://serverfault.com/questions/1060525/why-is-my-websocket-connection-gets-closed-in-60-seconds
                         conn.send_bytes(bytes::Bytes::new()).await?;
-                        continue; // 하트비트
+                        continue; // heartbeat
                     }
                     let msg = Message::parse_from_bytes(&bytes)?;
                     rz.handle_resp(msg.union, Sink::Stream(&mut conn), &server, &mut update_latency).await?
@@ -415,7 +383,7 @@ impl RendezvousMediator {
                     }
                     // https://www.emqx.com/en/blog/mqtt-keep-alive
                     if last_recv_msg.elapsed().as_millis() as u64 > rz.keep_alive as u64 * 3 / 2 {
-                        bail!("랑데부 연결 시간 초과");
+                        bail!("Rendezvous connection is timeout");
                     }
                     if (!Config::get_key_confirmed() ||
                         !Config::get_host_key_confirmed(&rz.host_prefix)) &&
@@ -431,7 +399,7 @@ impl RendezvousMediator {
 
     pub async fn start(server: ServerPtr, host: String) -> ResultType<()> {
         log::info!("start rendezvous mediator of {}", host);
-        // 투자 에이전트 유형이 HTTP 또는 HTTPS이면 TCP 포워딩이 활성화됩니다.
+        //If the investment agent type is http or https, then tcp forwarding is enabled.
         if (cfg!(debug_assertions) && option_env!("TEST_TCP").is_some())
             || Config::is_proxy()
             || use_ws()
@@ -447,7 +415,7 @@ impl RendezvousMediator {
         let addr = AddrMangle::decode(&rr.socket_addr);
         let last = *LAST_RELAY_MSG.lock().await;
         *LAST_RELAY_MSG.lock().await = (addr, Instant::now());
-        // 중복된 릴레이 요청 메시지 건너뛰기
+        // skip duplicate relay request messages
         if last.0 == addr && last.1.elapsed().as_millis() < 100 {
             return Ok(());
         }
@@ -465,18 +433,7 @@ impl RendezvousMediator {
         .await
     }
 
-/// 릴레이 연결을 생성합니다.
-    /// 
-    /// 피어 간 직접 연결이 불가능할 때 릴레이 서버를 통해 연결을 중개합니다.
-    /// 
-    /// # 인자
-    /// * `socket_addr` - 피어의 소켓 주소
-    /// * `relay_server` - 릴레이 서버 주소
-    /// * `uuid` - 연결 UUID
-    /// * `server` - 로컬 서버 인스턴스
-    /// * `secure` - 보안 연결 여부
-    /// * `initiate` - 연결 시작 여부
-    async fn create_relay()
+    async fn create_relay(
         &self,
         socket_addr: Vec<u8>,
         relay_server: String,
@@ -525,15 +482,11 @@ impl RendezvousMediator {
         Ok(())
     }
 
-/// 로컬 네트워크(내부망) 연결을 처리합니다.
-    /// 
-    /// NAT 펀칭을 통해 직접 연결을 시도하고, 실패 시 릴레이로 전환합니다.
-    /// IPv6 주소도 함께 처리합니다.
-    async fn handle_intranet()&self, fla: FetchLocalAddr, server: ServerPtr) -> ResultType<()> {
+    async fn handle_intranet(&self, fla: FetchLocalAddr, server: ServerPtr) -> ResultType<()> {
         let addr = AddrMangle::decode(&fla.socket_addr);
         let last = *LAST_MSG.lock().await;
         *LAST_MSG.lock().await = (addr, Instant::now());
-        // 중복된 펀치홀 메시지 건너뛰기
+        // skip duplicate punch hole messages
         if last.0 == addr && last.1.elapsed().as_millis() < 100 {
             return Ok(());
         }
@@ -590,7 +543,7 @@ impl RendezvousMediator {
         log::debug!("Handle intranet from {:?}", peer_addr);
         let mut socket = connect_tcp(&*self.host, CONNECT_TIMEOUT).await?;
         let local_addr = socket.local_addr();
-        // 프록시 사용 중 유효하지 않은 local_addr이 발견되었습니다. local_addr.ip() == "::1"
+        // we saw invalid local_addr while using proxy, local_addr.ip() == "::1"
         let local_addr: SocketAddr =
             format!("{}:{}", local_addr.ip(), local_addr.port()).parse()?;
         let mut msg_out = Message::new();
@@ -616,15 +569,11 @@ impl RendezvousMediator {
         Ok(())
     }
 
-/// NAT 펀칭 요청을 처리합니다.
-    /// 
-    /// 피어의 공개 주소로부터 인바운드 연결을 허용하기 위해
-    /// 로컬 방화벽을 통해 \"구멍\"을 뚫고 아웃바운드 패킷을 전송합니다.
-    async fn handle_punch_hole()&self, ph: PunchHole, server: ServerPtr) -> ResultType<()> {
+    async fn handle_punch_hole(&self, ph: PunchHole, server: ServerPtr) -> ResultType<()> {
         let mut peer_addr = AddrMangle::decode(&ph.socket_addr);
         let last = *LAST_MSG.lock().await;
         *LAST_MSG.lock().await = (peer_addr, Instant::now());
-        // 중복된 펀치홀 메시지 건너뛰기
+        // skip duplicate punch hole messages
         if last.0 == peer_addr && last.1.elapsed().as_millis() < 100 {
             return Ok(());
         }
@@ -642,7 +591,7 @@ impl RendezvousMediator {
             .await;
         }
         let relay_server = self.get_relay_server(ph.relay_server);
-        // 확실히 하기 위해 WebSocket은 릴레이로 직접 이동합니다
+        // for ensure, websocket go relay directly
         if ph.nat_type.enum_value() == Ok(NatType::SYMMETRIC)
             || Config::get_nat_type() == NatType::SYMMETRIC as i32
             || relay
@@ -683,8 +632,8 @@ impl RendezvousMediator {
         let mut socket = {
             let socket = connect_tcp(&*self.host, CONNECT_TIMEOUT).await?;
             let local_addr = socket.local_addr();
-            // 펀치홀을 위한 키는 여기서 게이트웨이에 들어오는 피어가 안전함을 알리기 위해 중요합니다.
-            // local_addr을 재사용할 수 없으므로 여기서 비동기일 수 없습니다. 다시 사용하기 전에 연결을 닫아야 합니다.
+            // key important here for punch hole to tell my gateway incoming peer is safe.
+            // it can not be async here, because local_addr can not be reused, we must close the connection before use it again.
             allow_err!(socket_client::connect_tcp_local(peer_addr, Some(local_addr), 30).await);
             socket
         };
@@ -831,7 +780,7 @@ async fn direct_server(server: ServerPtr) {
                     );
                 }
                 Err(err) => {
-                    // 할 일: UI에 전달
+                    // to-do: pass to ui
                     log::error!(
                         "Failed to start direct server on port: {}, error: {}",
                         port,
@@ -958,12 +907,12 @@ async fn udp_nat_listen(
     Ok(())
 }
 
-// 설정이 아직 루트에서 동기화되지 않았을 때, register_pk는 새로 생성된 pk로 이미 전송되었을 수 있습니다.
-// 설정 동기화 완료 후 pk가 변경될 수 있습니다. 이 구조는 pk 변경을 감지하고 트리거합니다
-// key_confirmed를 false로 설정하여 재등록합니다.
+// When config is not yet synced from root, register_pk may have already been sent with a new generated pk.
+// After config sync completes, the pk may change. This struct detects pk changes and triggers
+// a re-registration by setting key_confirmed to false.
 // NOTE:
-// 이것은 현재 ID에 대한 PK 등록만 수정합니다. 루트가 기본이 아닌 MAC 생성 ID를 사용하는 경우,
-// 이것만으로는 다중 ID 문제를 해결하지 못합니다.
+// This only corrects PK registration for the current ID. If root uses a non-default mac-generated ID,
+// this does not resolve the multi-ID issue by itself.
 pub struct CheckIfResendPk {
     pk: Option<Vec<u8>>,
 }

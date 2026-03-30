@@ -10,9 +10,6 @@ use hbb_common::{config, log};
 #[cfg(windows)]
 use tauri_winrt_notification::{Duration, Sound, Toast};
 
-/// 플랫폼별 출력 매크로
-/// - Windows: 메시지 박스로 표시
-/// - 기타 플랫폼: 표준 출력(println) 사용
 #[macro_export]
 macro_rules! my_println{
     ($($arg:tt)*) => {
@@ -25,52 +22,35 @@ macro_rules! my_println{
     };
 }
 
-/// Flutter 및 Sciter UI를 위한 핵심 메인 함수
+/// shared by flutter and sciter main function
 ///
-/// # 반환값
-/// - [`None`]: 프로세스 종료, Flutter GUI를 시작하지 않음
-/// - [`Some`]: 프로세스 계속 실행, Flutter GUI 시작
-///
-/// # 기능
-/// 이 함수는 다음을 처리한다:
-/// - 전역 초기화
-/// - 커스텀 클라이언트 로드
-/// - 명령줄 인자 파싱 및 처리
-/// - Windows 부트스트랩
-/// - 트레이 아이콘 시작
-/// - 업데이트 처리
+/// [Note]
+/// If it returns [`None`], then the process will terminate, and flutter gui will not be started.
+/// If it returns [`Some`], then the process will continue, and flutter gui will be started.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn core_main() -> Option<Vec<String>> {
-    // 전역 초기화
     if !crate::common::global_init() {
         return None;
     }
-    // 커스텀 클라이언트 설정 로드
     crate::load_custom_client();
     #[cfg(windows)]
-    // Windows 플랫폼 초기화
     if !crate::platform::windows::bootstrap() {
-        // 부트스트랩 실패 시 프로세스 종료
+        // return None to terminate the process
         return None;
     }
-    // 명령줄 인자 저장용 벡터들
     let mut args = Vec::new();
     let mut flutter_args = Vec::new();
     let mut i = 0;
-    // 플래그들
-    let mut _is_elevate = false;           // 권한 상승 필요 여부
-    let mut _is_run_as_system = false;     // 시스템 사용자로 실행 여부
-    let mut _is_quick_support = false;     // Quick Support 모드 여부
-    let mut _is_flutter_invoke_new_connection = false;  // Flutter에서 새 연결 호출 여부
-    let mut no_server = false;             // 서버 시작 안함 여부
-    let mut arg_exe = Default::default();  // 실행 파일 경로
-    // 명령줄 인자 파싱
+    let mut _is_elevate = false;
+    let mut _is_run_as_system = false;
+    let mut _is_quick_support = false;
+    let mut _is_flutter_invoke_new_connection = false;
+    let mut no_server = false;
+    let mut arg_exe = Default::default();
     for arg in std::env::args() {
         if i == 0 {
-            // 첫 번째 인자는 실행 파일 경로
             arg_exe = arg;
         } else if i > 0 {
-            // Flutter에서 새 연결 호출 관련 인자 확인
             #[cfg(feature = "flutter")]
             if [
                 "--connect",
@@ -85,7 +65,6 @@ pub fn core_main() -> Option<Vec<String>> {
             {
                 _is_flutter_invoke_new_connection = true;
             }
-            // 플래그 설정
             if arg == "--elevate" {
                 _is_elevate = true;
             } else if arg == "--run-as-system" {
@@ -95,37 +74,30 @@ pub fn core_main() -> Option<Vec<String>> {
             } else if arg == "--no-server" {
                 no_server = true;
             } else {
-                // 나머지 인자는 저장
                 args.push(arg);
             }
         }
         i += 1;
     }
-    // Linux 및 Windows에서 인자가 없는 경우 트레이 실행 확인
     #[cfg(any(target_os = "linux", target_os = "windows"))]
     if args.is_empty() {
         #[cfg(target_os = "linux")]
-        // Linux: 서버 프로세스 실행 확인
         let should_check_start_tray = crate::check_process("--server", false);
-        // Windows의 경우 --server 프로세스는 시스템 사용자 권한으로 실행되므로
-        // 직접 확인 불가능. 대신 Self Service 및 설치 여부로 판단한다.
+        // We can use `crate::check_process("--server", false)` on Windows.
+        // Because `--server` process is the System user's process. We can't get the arguments in `check_process()`.
+        // We can assume that self service running means the server is also running on Windows.
         #[cfg(target_os = "windows")]
         let should_check_start_tray = crate::platform::is_self_service_running()
             && crate::platform::is_cur_exe_the_installed();
-        // 트레이가 없으면 트레이 시작
         if should_check_start_tray && !crate::check_process("--tray", true) {
             #[cfg(target_os = "linux")]
-            // Linux: 자동 시작 설정 확인
             hbb_common::allow_err!(crate::platform::check_autostart_config());
-            // 트레이 프로세스 시작
             hbb_common::allow_err!(crate::run_me(vec!["--tray"]));
         }
     }
-    // 릴리스 모드에서만 크래시 핸들러 등록
     #[cfg(not(debug_assertions))]
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     register_breakdown_handler(breakdown_callback);
-    // Linux Flutter에서 소프트웨어 렌더링 옵션 설정
     #[cfg(target_os = "linux")]
     #[cfg(feature = "flutter")]
     {
@@ -134,35 +106,27 @@ pub fn core_main() -> Option<Vec<String>> {
             "allow-always-software-render",
             &config::Config::get_option("allow-always-software-render"),
         ) {
-            // 소프트웨어 렌더링 활성화
             std::env::set_var(k, v);
         } else {
-            // 하드웨어 렌더링 사용
             std::env::remove_var(k);
         }
     }
-    // Windows: 연결 또는 카메라 보기 시 CPU 성능 모니터링 시작
     #[cfg(windows)]
     if args.contains(&"--connect".to_string()) || args.contains(&"--view-camera".to_string()) {
         hbb_common::platform::windows::start_cpu_performance_monitor();
     }
-    // Flutter에서 새 연결 호출 시 처리
     #[cfg(feature = "flutter")]
     if _is_flutter_invoke_new_connection {
         return core_main_invoke_new_connection(std::env::args());
     }
-    // Windows 설치 프로그램으로 실행 여부 확인
     let click_setup = cfg!(windows) && args.is_empty() && crate::common::is_setup(&arg_exe);
     if click_setup && !config::is_disable_installation() {
-        // 설치 모드 활성화
         args.push("--install".to_owned());
         flutter_args.push("--install".to_string());
     }
-    // --noinstall 플래그로 모든 인자 제거
     if args.contains(&"--noinstall".to_string()) {
         args.clear();
     }
-    // 버전 또는 빌드 날짜 출력 후 종료
     if args.len() > 0 {
         if args[0] == "--version" {
             println!("{}", crate::VERSION);
@@ -172,7 +136,6 @@ pub fn core_main() -> Option<Vec<String>> {
             return None;
         }
     }
-    // Windows Quick Support 모드 결정
     #[cfg(windows)]
     {
         _is_quick_support |= !crate::platform::is_installed()
@@ -182,7 +145,6 @@ pub fn core_main() -> Option<Vec<String>> {
                 || (!click_setup && crate::platform::is_elevated(None).unwrap_or(false)));
         crate::portable_service::client::set_quick_support(_is_quick_support);
     }
-    // 로그 파일명 설정 (첫 번째 "--"로 시작하는 인자를 로그명으로 사용)
     let mut log_name = "".to_owned();
     if args.len() > 0 && args[0].starts_with("--") {
         let name = args[0].replace("--", "");
@@ -190,16 +152,14 @@ pub fn core_main() -> Option<Vec<String>> {
             log_name = name;
         }
     }
-    // 로깅 초기화
     hbb_common::init_log(false, &log_name);
 
-    // Linux: URI 스킴으로 시작된 경우 DBus를 통해 기존 인스턴스에 전달
+    // linux uni (url) go here.
     #[cfg(all(target_os = "linux", feature = "flutter"))]
     if args.len() > 0 && args[0].starts_with(&crate::get_uri_prefix()) {
         return try_send_by_dbus(args[0].clone());
     }
 
-    // Windows: Quick Support 모드로 portable service 시작
     #[cfg(windows)]
     if !crate::platform::is_installed()
         && args.is_empty()
@@ -212,7 +172,6 @@ pub fn core_main() -> Option<Vec<String>> {
             log::error!("Failed to start portable service: {:?}", e);
         }
     }
-    // Windows: 권한 상승 또는 시스템 사용자로 실행 필요 시 처리
     #[cfg(windows)]
     if !crate::platform::is_installed() && (_is_elevate || _is_run_as_system) {
         crate::platform::elevate_or_run_as_system(click_setup, _is_elevate, _is_run_as_system);

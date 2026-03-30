@@ -1,6 +1,3 @@
-/// 비디오 품질 최적화 서비스 (QoS)
-/// 네트워크 상태에 따라 프레임 레이트와 비트레이트를 동적으로 조정
-
 use super::*;
 use scrap::codec::{Quality, BR_BALANCED, BR_BEST, BR_SPEED};
 use std::{
@@ -8,33 +5,35 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// FPS 조정 알고리즘:
-/// a. 새 사용자 연결 => INIT_FPS로 설정
-/// b. TestDelay 수신 => 네트워크 지연에 따라 사용자 fps 업데이트
-///    - 네트워크 지연 < DELAY_THRESHOLD_150MS: 이미지 품질에 따라 최소 fps 설정, fps 증가
-///    - 네트워크 지연 >= DELAY_THRESHOLD_150MS: 이미지 품질에 따라 최소 fps 설정, fps 감소
-/// c. 초 타임아웃 / TestDelay 수신 => 실제 fps를 모든 사용자의 최소 fps로 업데이트
-///
-/// 비율(비트레이트) 조정 알고리즘:
-/// a. 사용자가 이미지 품질 설정 => 최신 품질의 최대 비율로 업데이트
-/// b. 3초 타임아웃 => 네트워크 지연에 따라 비율 업데이트
-///    - 네트워크 지연 < DELAY_THRESHOLD_150MS: 비율 증가, 최대 150kbps
-///    - 네트워크 지연 >= DELAY_THRESHOLD_150MS: 비율 감소
-///
-/// FPS와 비율 간의 조정:
-/// - 네트워크 지연 < DELAY_THRESHOLD_150MS: fps는 최소 fps보다 높고, 비율은 증가
-/// - 네트워크 지연 >= DELAY_THRESHOLD_150MS: fps는 최소 fps보다 낮고, 비율은 감소
-///
-/// 지연 계산:
-/// - 지연 마이너스 RTT를 실제 네트워크 지연으로 사용
+/*
+FPS adjust:
+a. new user connected =>set to INIT_FPS
+b. TestDelay receive => update user's fps according to network delay
+    When network delay < DELAY_THRESHOLD_150MS, set minimum fps according to image quality, and increase fps;
+    When network delay >= DELAY_THRESHOLD_150MS, set minimum fps according to image quality, and decrease fps;
+c. second timeout / TestDelay receive => update real fps to the minimum fps from all users
 
-// 상수 정의
+ratio adjust:
+a. user set image quality => update to the maximum ratio of the latest quality
+b. 3 seconds timeout => update ratio according to network delay
+    When network delay < DELAY_THRESHOLD_150MS, increase ratio, max 150kbps;
+    When network delay >= DELAY_THRESHOLD_150MS, decrease ratio;
+
+adjust between FPS and ratio:
+    When network delay < DELAY_THRESHOLD_150MS, fps is always higher than the minimum fps, and ratio is increasing;
+    When network delay >= DELAY_THRESHOLD_150MS, fps is always lower than the minimum fps, and ratio is decreasing;
+
+delay:
+    use delay minus RTT as the actual network delay
+*/
+
+// Constants
 pub const FPS: u32 = 30;
 pub const MIN_FPS: u32 = 1;
 pub const MAX_FPS: u32 = 120;
 pub const INIT_FPS: u32 = 15;
 
-// 비트레이트 ratio constants for different quality levels
+// Bitrate ratio constants for different quality levels
 const BR_MAX: f32 = 40.0; // 2000 * 2 / 100
 const BR_MIN: f32 = 0.2;
 const BR_MIN_HIGH_RESOLUTION: f32 = 0.1; // For high resolution, BR_MIN is still too high, so we set a lower limit
