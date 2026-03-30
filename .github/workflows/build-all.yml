@@ -1,0 +1,17 @@
+name: Build All Platforms
+
+on:
+  workflow_dispatch:
+    inputs:
+      upload-tag:
+        description: 'Upload tag name'
+        required: false
+        default: 'nightly'
+
+jobs:
+  build-all-platforms:
+    uses: ./.github/workflows/flutter-build.yml
+    secrets: inherit
+    with:
+      upload-artifact: true
+      upload-tag: ${{ inputs.upload-tag }}
