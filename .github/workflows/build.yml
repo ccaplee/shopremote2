@@ -36,15 +36,19 @@ jobs:
           libopus-dev \
           libxrandr-dev \
           libdbus-1-dev \
-          python3
+          python3 ninja-build
 
-    - name: Setup vcpkg and install packages
+    - name: Setup vcpkg
       run: |
         export VCPKG_ROOT="$HOME/vcpkg"
         git clone https://github.com/Microsoft/vcpkg.git "$VCPKG_ROOT"
         "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
-        "$VCPKG_ROOT/vcpkg" install libyuv libvpx aom --triplet x64-linux
         echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
+
+    - name: Install vcpkg packages (manifest mode)
+      run: |
+        export VCPKG_DEFAULT_TRIPLET=x64-linux
+        "$VCPKG_ROOT/vcpkg" install --triplet x64-linux
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
