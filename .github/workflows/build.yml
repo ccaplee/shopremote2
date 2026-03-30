@@ -38,17 +38,22 @@ jobs:
           libdbus-1-dev \
           python3 ninja-build
 
-    - name: Setup vcpkg
+    - name: Setup vcpkg and install packages
       run: |
         export VCPKG_ROOT="$HOME/vcpkg"
         git clone https://github.com/Microsoft/vcpkg.git "$VCPKG_ROOT"
         "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
-        echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
-
-    - name: Install vcpkg packages (manifest mode)
-      run: |
         export VCPKG_DEFAULT_TRIPLET=x64-linux
         "$VCPKG_ROOT/vcpkg" install --triplet x64-linux
+        echo "VCPKG_ROOT=$VCPKG_ROOT" >> $GITHUB_ENV
+        echo "VCPKG_INSTALLED_ROOT=$VCPKG_ROOT/installed" >> $GITHUB_ENV
+
+    - name: Verify vcpkg packages
+      run: |
+        echo "Checking installed headers..."
+        ls -la "$VCPKG_ROOT/installed/x64-linux/include/"
+        ls -la "$VCPKG_ROOT/installed/x64-linux/include/vpx/" || echo "No vpx dir"
+        ls -la "$VCPKG_ROOT/installed/x64-linux/lib/" | head -20
 
     - name: Install Rust toolchain
       uses: dtolnay/rust-toolchain@stable
@@ -63,7 +68,11 @@ jobs:
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
     - name: Build
-      run: cargo build --release
+      env:
+        BINDGEN_EXTRA_CLANG_ARGS: "-I${{ env.VCPKG_ROOT }}/installed/x64-linux/include"
+      run: |
+        export BINDGEN_EXTRA_CLANG_ARGS="-I$VCPKG_ROOT/installed/x64-linux/include"
+        cargo build --release
 
     - name: Check
       run: cargo check
