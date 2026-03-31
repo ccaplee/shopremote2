@@ -125,6 +125,10 @@ pub fn translate_locale(name: String, locale: &str) -> String {
             .unwrap_or_default()
             .to_owned();
     }
+    // 시스템 로케일을 감지하지 못한 경우 한국어를 기본값으로 사용
+    if lang.is_empty() {
+        lang = "ko".to_owned();
+    }
     let lang = lang.to_lowercase();
     let m = match lang.as_str() {
         "fr" => fr::T.deref(),
