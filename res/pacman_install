@@ -5,43 +5,43 @@
 # arg 1:  the new package version
 post_install() {
 	# do something here
-	cp /usr/share/rustdesk/files/rustdesk.service /etc/systemd/system/rustdesk.service
-	cp /usr/share/rustdesk/files/rustdesk.desktop /usr/share/applications/
-	cp /usr/share/rustdesk/files/rustdesk-link.desktop /usr/share/applications/
+	cp /usr/share/shopremote2/files/shopremote2.service /etc/systemd/system/shopremote2.service
+	cp /usr/share/shopremote2/files/shopremote2.desktop /usr/share/applications/
+	cp /usr/share/shopremote2/files/shopremote2-link.desktop /usr/share/applications/
 	systemctl daemon-reload
-	systemctl enable rustdesk
-	systemctl start rustdesk
+	systemctl enable shopremote2
+	systemctl start shopremote2
 	update-desktop-database
 }
 
 # arg 1:  the new package version
 # arg 2:  the old package version
 pre_upgrade() {
-    systemctl stop rustdesk || true
+    systemctl stop shopremote2 || true
 }
 
 # arg 1:  the new package version
 # arg 2:  the old package version
 post_upgrade() {
-	cp /usr/share/rustdesk/files/rustdesk.service /etc/systemd/system/rustdesk.service
-	cp /usr/share/rustdesk/files/rustdesk.desktop /usr/share/applications/
-	cp /usr/share/rustdesk/files/rustdesk-link.desktop /usr/share/applications/
+	cp /usr/share/shopremote2/files/shopremote2.service /etc/systemd/system/shopremote2.service
+	cp /usr/share/shopremote2/files/shopremote2.desktop /usr/share/applications/
+	cp /usr/share/shopremote2/files/shopremote2-link.desktop /usr/share/applications/
 	systemctl daemon-reload
-	systemctl enable rustdesk
-	systemctl start rustdesk
+	systemctl enable shopremote2
+	systemctl start shopremote2
 	update-desktop-database
 }
 
 # arg 1:  the old package version
 pre_remove() {
-	systemctl stop rustdesk || true
-	systemctl disable rustdesk || true
-	rm /etc/systemd/system/rustdesk.service || true
+	systemctl stop shopremote2 || true
+	systemctl disable shopremote2 || true
+	rm /etc/systemd/system/shopremote2.service || true
 }
 
 # arg 1:  the old package version
 post_remove() {
-	rm /usr/share/applications/rustdesk.desktop || true
-	rm /usr/share/applications/rustdesk-link.desktop || true
+	rm /usr/share/applications/shopremote2.desktop || true
+	rm /usr/share/applications/shopremote2-link.desktop || true
 	update-desktop-database
 }

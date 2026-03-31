@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/desktop/pages/view_camera_tab_page.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/desktop/pages/view_camera_tab_page.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/models/state_model.dart';
 import 'package:provider/provider.dart';
 
 /// multi-tab desktop remote screen

@@ -32,11 +32,11 @@ pub(super) const PRIVACY_MODE_IMPL: &str = "privacy_mode_impl_mag";
 // 원본 프로세스 실행 파일 (런타임 브로커)
 pub const ORIGIN_PROCESS_EXE: &'static str = "C:\\Windows\\System32\\RuntimeBroker.exe";
 // 프라이버시 모드 윈도우를 위해 주입할 프로세스 실행 파일 이름
-pub const WIN_TOPMOST_INJECTED_PROCESS_EXE: &'static str = "RuntimeBroker_rustdesk.exe";
+pub const WIN_TOPMOST_INJECTED_PROCESS_EXE: &'static str = "RuntimeBroker_shopremote2.exe";
 // 실제 주입될 프로세스 (위와 동일)
 pub const INJECTED_PROCESS_EXE: &'static str = WIN_TOPMOST_INJECTED_PROCESS_EXE;
 // 프라이버시 보호 윈도우의 클래스명/윈도우명
-pub(super) const PRIVACY_WINDOW_NAME: &'static str = "RustDeskPrivacyWindow";
+pub(super) const PRIVACY_WINDOW_NAME: &'static str = "ShopRemote2PrivacyWindow";
 
 /// 프라이버시 모드 윈도우 프로세스의 핸들을 관리하는 구조체입니다.
 ///

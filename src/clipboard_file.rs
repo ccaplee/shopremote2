@@ -2,7 +2,7 @@ use clipboard::ClipboardFile;
 use hbb_common::message_proto::*;
 
 /// ClipboardFile를 Message 프로토콜 형식으로 변환합니다
-/// 파일 클립보드 작업(알림, 포맷 목록, 데이터 요청/응답 등)을 RustDesk 프로토콜로 변환합니다
+/// 파일 클립보드 작업(알림, 포맷 목록, 데이터 요청/응답 등)을 ShopRemote2 프로토콜로 변환합니다
 pub fn clip_2_msg(clip: ClipboardFile) -> Message {
     match clip {
         ClipboardFile::NotifyCallback {

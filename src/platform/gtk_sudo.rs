@@ -49,9 +49,9 @@ enum Message {
 
 /// sudo/su 명령을 실행하는 함수
 /// 명령 행 인자를 기반으로 CLI 모드 또는 GUI 모드로 실행
-/// rustdesk 서비스가 프로세스를 종료할 때를 대비한 안전장치 포함
+/// shopremote2 서비스가 프로세스를 종료할 때를 대비한 안전장치 포함
 pub fn run(cmds: Vec<&str>) -> ResultType<()> {
-    // rustdesk 서비스가 `rustdesk --` 프로세스 종료 처리
+    // shopremote2 서비스가 `shopremote2 --` 프로세스 종료 처리
     let second_arg = std::env::args().nth(1).unwrap_or_default();
     // CLI 모드 판별: "--" 로 시작하지만 "--tray"나 "--no-server"는 아닌 경우
     let cmd_mode =

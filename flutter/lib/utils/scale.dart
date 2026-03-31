@@ -1,5 +1,5 @@
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/models/platform_model.dart';
 import 'package:uuid/uuid.dart';
 
 /// Clamp custom scale percent to supported bounds.

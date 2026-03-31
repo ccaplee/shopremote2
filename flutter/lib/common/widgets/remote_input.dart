@@ -5,11 +5,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/gestures.dart';
 
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/models/model.dart';
-import 'package:flutter_hbb/models/input_model.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/models/model.dart';
+import 'package:shopremote2/models/input_model.dart';
 
 import './gestures.dart';
 

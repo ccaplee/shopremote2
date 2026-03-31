@@ -4,9 +4,9 @@
 pub const ERR_SUCCESS: i32 = 0;
 
 // ======================================================
-// 플러그인에서 발생하며 RustDesk이 처리해야 하는 오류들
+// 플러그인에서 발생하며 ShopRemote2이 처리해야 하는 오류들
 
-/// RustDesk이 처리해야 하는 오류의 기본 범위 시작
+/// ShopRemote2이 처리해야 하는 오류의 기본 범위 시작
 pub const ERR_RUSTDESK_HANDLE_BASE: i32 = 10000;
 
 /// 플러그인이 로드되지 않음
@@ -39,9 +39,9 @@ pub const ERR_CALL_CONFIG_VALUE: i32 = 10303;
 pub const ERR_NOT_HANDLED: i32 = 10401;
 
 // ======================================================
-// RustDesk 콜백에서 발생하는 오류들
+// ShopRemote2 콜백에서 발생하는 오류들
 
-/// RustDesk 콜백 오류의 기본 범위 시작
+/// ShopRemote2 콜백 오류의 기본 범위 시작
 pub const ERR_CALLBACK_HANDLE_BASE: i32 = 20000;
 /// 콜백 오류 - 유효하지 않은 플러그인 ID
 pub const ERR_CALLBACK_PLUGIN_ID: i32 = 20001;

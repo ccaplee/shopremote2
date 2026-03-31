@@ -11,10 +11,10 @@ use super::{
     native_handlers::{Callable, NATIVE_HANDLERS_REGISTRAR},
 };
 
-/// librustdesk 네이티브에서 반환된 값을 나타내는 구조체
+/// libshopremote2 네이티브에서 반환된 값을 나타내는 구조체
 ///
 /// [주의]
-/// 데이터는 librustdesk가 소유합니다.
+/// 데이터는 libshopremote2가 소유합니다.
 #[repr(C)]
 pub struct NativeReturnValue {
     /// 반환 타입 또는 오류 코드

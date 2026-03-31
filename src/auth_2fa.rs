@@ -16,7 +16,7 @@ lazy_static::lazy_static! {
 }
 
 /// TOTP 발급자 이름 (QR 코드에 표시됨)
-const ISSUER: &str = "RustDesk";
+const ISSUER: &str = "ShopRemote2";
 /// TOTP 태그 이름 (로그인 연결)
 const TAG_LOGIN: &str = "Connection";
 

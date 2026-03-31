@@ -11,7 +11,7 @@ pub use setup::{
 
 /// 원격 프린터 드라이버 INF 파일 경로
 #[cfg(target_os = "windows")]
-const RD_DRIVER_INF_PATH: &str = "drivers/RustDeskPrinterDriver/RustDeskPrinterDriver.inf";
+const RD_DRIVER_INF_PATH: &str = "drivers/ShopRemote2PrinterDriver/ShopRemote2PrinterDriver.inf";
 
 /// 프린터 이름을 UTF-16 인코딩으로 반환합니다.
 #[cfg(target_os = "windows")]
@@ -25,7 +25,7 @@ fn get_printer_name(app_name: &str) -> Vec<u16> {
 /// 프린터 드라이버 이름을 UTF-16 인코딩으로 반환합니다.
 #[cfg(target_os = "windows")]
 fn get_driver_name() -> Vec<u16> {
-    "RustDesk v4 Printer Driver"
+    "ShopRemote2 v4 Printer Driver"
         .encode_utf16()
         .chain(Some(0))
         .collect()

@@ -107,7 +107,7 @@ type CallbackGetId = extern "C" fn() -> *const c_char;
 /// * `msg` - 로그 메시지 (UTF-8 널 종료 문자열)
 type CallbackLog = extern "C" fn(level: *const c_char, msg: *const c_char);
 
-/// RustDesk 코어로의 콜백 함수 타입
+/// ShopRemote2 코어로의 콜백 함수 타입
 ///
 /// # 매개변수
 /// * `method` - 콜백 메서드 이름

@@ -6,13 +6,13 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide TabBarTheme;
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/desktop/pages/remote_page.dart';
-import 'package:flutter_hbb/desktop/pages/view_camera_page.dart';
-import 'package:flutter_hbb/main.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/desktop/pages/remote_page.dart';
+import 'package:shopremote2/desktop/pages/view_camera_page.dart';
+import 'package:shopremote2/main.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:get/get_rx/src/rx_workers/utils/debouncer.dart';
 import 'package:scroll_pos/scroll_pos.dart';
@@ -640,7 +640,7 @@ class _DesktopTabState extends State<DesktopTab>
                         Offstage(
                             offstage: !showTitle,
                             child: const Text(
-                              "RustDesk",
+                              "ShopRemote2",
                               style: TextStyle(fontSize: 13),
                             ).marginOnly(left: 2))
                       ]).marginOnly(

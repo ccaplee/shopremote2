@@ -81,8 +81,8 @@ static PLUGIN_SOURCE_LOCAL: &str = "local";
 fn get_plugin_source_list() -> Vec<PluginSource> {
     // 현재는 소스가 하나뿐입니다.
     // vec![PluginSource {
-    //     name: "rustdesk".to_string(),
-    //     url: "https://raw.githubusercontent.com/fufesou/rustdesk-plugins/main".to_string(),
+    //     name: "shopremote2".to_string(),
+    //     url: "https://raw.githubusercontent.com/fufesou/shopremote2-plugins/main".to_string(),
     //     description: "".to_string(),
     // }]
     vec![]
@@ -236,7 +236,7 @@ fn elevate_install(
     if !same_plugin_exists {
         args.push(&plugin_url);
     }
-    crate::platform::elevate(args, "RustDesk wants to install then plugin")
+    crate::platform::elevate(args, "ShopRemote2 wants to install then plugin")
 }
 
 /// Windows에서 플러그인 언로드를 위해 권한 상승을 수행합니다
@@ -259,7 +259,7 @@ fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
 fn elevate_uninstall(plugin_id: &str) -> ResultType<bool> {
     crate::platform::elevate(
         vec!["--plugin-uninstall", plugin_id],
-        "RustDesk wants to uninstall the plugin",
+        "ShopRemote2 wants to uninstall the plugin",
     )
 }
 

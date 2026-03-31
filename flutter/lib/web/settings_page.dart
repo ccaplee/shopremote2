@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
+import 'package:shopremote2/desktop/pages/desktop_setting_page.dart';
 
 class WebSettingsPage extends StatelessWidget {
   const WebSettingsPage({Key? key}) : super(key: key);

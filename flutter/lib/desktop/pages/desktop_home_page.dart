@@ -5,20 +5,20 @@ import 'dart:convert';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
-import 'package:flutter_hbb/common/widgets/custom_password.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/desktop/pages/connection_page.dart';
-import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
-import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
-import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/models/server_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
-import 'package:flutter_hbb/plugin/ui_manager.dart';
-import 'package:flutter_hbb/utils/multi_window_manager.dart';
-import 'package:flutter_hbb/utils/platform_channel.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/common/widgets/animated_rotation_widget.dart';
+import 'package:shopremote2/common/widgets/custom_password.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/desktop/pages/connection_page.dart';
+import 'package:shopremote2/desktop/pages/desktop_setting_page.dart';
+import 'package:shopremote2/desktop/pages/desktop_tab_page.dart';
+import 'package:shopremote2/desktop/widgets/update_progress.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/models/server_model.dart';
+import 'package:shopremote2/models/state_model.dart';
+import 'package:shopremote2/plugin/ui_manager.dart';
+import 'package:shopremote2/utils/multi_window_manager.dart';
+import 'package:shopremote2/utils/platform_channel.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -433,7 +433,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     if (!bind.isCustomClient() &&
         updateUrl.isNotEmpty &&
         !isCardClosed &&
-        bind.mainUriPrefixSync().contains('rustdesk')) {
+        bind.mainUriPrefixSync().contains('shopremote2')) {
       final isToUpdate = (isWindows || isMacOS) && bind.mainIsInstalled();
       String btnText = isToUpdate ? 'Update' : 'Download';
       GestureTapCallback onPressed = () async {

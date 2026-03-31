@@ -3,15 +3,15 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/common/widgets/audio_input.dart';
-import 'package:flutter_hbb/common/widgets/dialog.dart';
-import 'package:flutter_hbb/common/widgets/toolbar.dart';
-import 'package:flutter_hbb/models/chat_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/utils/multi_window_manager.dart';
-import 'package:flutter_hbb/plugin/widgets/desc_ui.dart';
-import 'package:flutter_hbb/plugin/common.dart';
+import 'package:shopremote2/common/widgets/audio_input.dart';
+import 'package:shopremote2/common/widgets/dialog.dart';
+import 'package:shopremote2/common/widgets/toolbar.dart';
+import 'package:shopremote2/models/chat_model.dart';
+import 'package:shopremote2/models/state_model.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/utils/multi_window_manager.dart';
+import 'package:shopremote2/plugin/widgets/desc_ui.dart';
+import 'package:shopremote2/plugin/common.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -25,8 +25,8 @@ import '../../models/platform_model.dart';
 import '../../common/shared_state.dart';
 import './popup_menu.dart';
 import './kb_layout_type_chooser.dart';
-import 'package:flutter_hbb/utils/scale.dart';
-import 'package:flutter_hbb/common/widgets/custom_scale_base.dart';
+import 'package:shopremote2/utils/scale.dart';
+import 'package:shopremote2/common/widgets/custom_scale_base.dart';
 
 class ToolbarState {
   late RxBool _pin;

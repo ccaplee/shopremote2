@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #
-# Script to build F-Droid release of RustDesk
+# Script to build F-Droid release of ShopRemote2
 #
-# Copyright (C) 2024, The RustDesk Authors
+# Copyright (C) 2024, The ShopRemote2 Authors
 #               2024, Vasyl Gello <vasek.gello@gmail.com>
 #
 
@@ -307,7 +307,7 @@ prebuild)
 		fi
 	fi
 
-	# Patch the RustDesk sources
+	# Patch the ShopRemote2 sources
 
 	git apply res/fdroid/patches/*.patch
 
@@ -357,7 +357,7 @@ prebuild)
 		git reset
 	fi
 
-	# Install Flutter version for RustDesk library build
+	# Install Flutter version for ShopRemote2 library build
 
 	prepare_flutter "${FLUTTER_VERSION}" "${HOME}/flutter"
 
@@ -447,7 +447,7 @@ build)
 
 	bash flutter/build_android_deps.sh "${ANDROID_ABI}"
 
-	# Build rustdesk lib
+	# Build shopremote2 lib
 
 	cargo ndk \
 		--platform 21 \
@@ -459,8 +459,8 @@ build)
 
 	mkdir -p "flutter/android/app/src/main/jniLibs/${ANDROID_ABI}"
 
-	cp "target/${RUST_TARGET}/release/liblibrustdesk.so" \
-		"flutter/android/app/src/main/jniLibs/${ANDROID_ABI}/librustdesk.so"
+	cp "target/${RUST_TARGET}/release/liblibshopremote2.so" \
+		"flutter/android/app/src/main/jniLibs/${ANDROID_ABI}/libshopremote2.so"
 
 	cp "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/${NDK_TARGET}/libc++_shared.so" \
 		"flutter/android/app/src/main/jniLibs/${ANDROID_ABI}/"

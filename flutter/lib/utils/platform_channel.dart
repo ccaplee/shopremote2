@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/main.dart';
-import 'package:flutter_hbb/common.dart';
+import 'package:shopremote2/main.dart';
+import 'package:shopremote2/common.dart';
 
 enum SystemWindowTheme { light, dark }
 
-/// The platform channel for RustDesk.
+/// The platform channel for ShopRemote2.
 class RdPlatformChannel {
   RdPlatformChannel._();
 
@@ -14,7 +14,7 @@ class RdPlatformChannel {
   static RdPlatformChannel get instance => _windowUtil;
 
   final MethodChannel _hostMethodChannel =
-      MethodChannel("org.rustdesk.rustdesk/host");
+      MethodChannel("org.shopremote2.shopremote2/host");
 
   /// Bump the position of the mouse cursor, if applicable
   Future<bool> bumpMouse({required int dx, required int dy}) async {

@@ -9,7 +9,7 @@ jobs:
     steps:
       - uses: vedantmgoyal9/winget-releaser@main
         with:
-          identifier: RustDesk.RustDesk
+          identifier: ShopRemote2.ShopRemote2
           version: "1.4.6"
           release-tag: "1.4.6"
           token: ${{ secrets.WINGET_TOKEN }}

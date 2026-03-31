@@ -1,5 +1,5 @@
 #![windows_subsystem = "windows"]
-//! 휴대용 RustDesk 애플리케이션 실행기
+//! 휴대용 ShopRemote2 애플리케이션 실행기
 //! 포함된 바이너리와 애플리케이션 메타데이터를 관리하고 실행합니다.
 
 use std::{
@@ -23,7 +23,7 @@ const APP_METADATA_CONFIG: &str = "meta.toml";
 /// 타임스탐프 메타데이터의 줄 접두사
 const META_LINE_PREFIX_TIMESTAMP: &str = "timestamp = ";
 /// 애플리케이션 접두사
-const APP_PREFIX: &str = "rustdesk";
+const APP_PREFIX: &str = "shopremote2";
 /// 런타임 환경 변수로 애플리케이션 이름 전달
 const APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
 /// 창을 포그라운드로 설정하는 환경 변수 (Windows 전용)
@@ -225,7 +225,7 @@ mod win {
 
     // Used for privacy mode(magnifier impl).
     pub const RUNTIME_BROKER_EXE: &'static str = "C:\\Windows\\System32\\RuntimeBroker.exe";
-    pub const WIN_TOPMOST_INJECTED_PROCESS_EXE: &'static str = "RuntimeBroker_rustdesk.exe";
+    pub const WIN_TOPMOST_INJECTED_PROCESS_EXE: &'static str = "RuntimeBroker_shopremote2.exe";
 
     pub(super) fn copy_runtime_broker(dir: &Path) {
         let src = RUNTIME_BROKER_EXE;
@@ -241,7 +241,7 @@ mod win {
             }
         }
         let _allow_err = Command::new("taskkill")
-            .args(&["/F", "/IM", "RuntimeBroker_rustdesk.exe"])
+            .args(&["/F", "/IM", "RuntimeBroker_shopremote2.exe"])
             .creation_flags(winapi::um::winbase::CREATE_NO_WINDOW)
             .output();
         let _allow_err = std::fs::copy(src, &format!("{}\\{}", dir.to_string_lossy(), tgt));

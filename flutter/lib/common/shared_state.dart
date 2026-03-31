@@ -1,4 +1,4 @@
-import 'package:flutter_hbb/common.dart';
+import 'package:shopremote2/common.dart';
 import 'package:get/get.dart';
 
 import '../consts.dart';

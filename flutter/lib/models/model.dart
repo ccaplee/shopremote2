@@ -10,27 +10,27 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_hbb/common/widgets/peers_view.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/models/ab_model.dart';
-import 'package:flutter_hbb/models/chat_model.dart';
-import 'package:flutter_hbb/models/cm_file_model.dart';
-import 'package:flutter_hbb/models/file_model.dart';
-import 'package:flutter_hbb/models/group_model.dart';
-import 'package:flutter_hbb/models/peer_model.dart';
-import 'package:flutter_hbb/models/peer_tab_model.dart';
-import 'package:flutter_hbb/models/printer_model.dart';
-import 'package:flutter_hbb/models/server_model.dart';
-import 'package:flutter_hbb/models/user_model.dart';
-import 'package:flutter_hbb/models/state_model.dart';
-import 'package:flutter_hbb/models/desktop_render_texture.dart';
-import 'package:flutter_hbb/models/terminal_model.dart';
-import 'package:flutter_hbb/plugin/event.dart';
-import 'package:flutter_hbb/plugin/manager.dart';
-import 'package:flutter_hbb/plugin/widgets/desc_ui.dart';
-import 'package:flutter_hbb/common/shared_state.dart';
-import 'package:flutter_hbb/utils/multi_window_manager.dart';
-import 'package:flutter_hbb/utils/http_service.dart' as http;
+import 'package:shopremote2/common/widgets/peers_view.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/models/ab_model.dart';
+import 'package:shopremote2/models/chat_model.dart';
+import 'package:shopremote2/models/cm_file_model.dart';
+import 'package:shopremote2/models/file_model.dart';
+import 'package:shopremote2/models/group_model.dart';
+import 'package:shopremote2/models/peer_model.dart';
+import 'package:shopremote2/models/peer_tab_model.dart';
+import 'package:shopremote2/models/printer_model.dart';
+import 'package:shopremote2/models/server_model.dart';
+import 'package:shopremote2/models/user_model.dart';
+import 'package:shopremote2/models/state_model.dart';
+import 'package:shopremote2/models/desktop_render_texture.dart';
+import 'package:shopremote2/models/terminal_model.dart';
+import 'package:shopremote2/plugin/event.dart';
+import 'package:shopremote2/plugin/manager.dart';
+import 'package:shopremote2/plugin/widgets/desc_ui.dart';
+import 'package:shopremote2/common/shared_state.dart';
+import 'package:shopremote2/utils/multi_window_manager.dart';
+import 'package:shopremote2/utils/http_service.dart' as http;
 import 'package:tuple/tuple.dart';
 import 'package:image/image.dart' as img2;
 import 'package:flutter_svg/flutter_svg.dart';
@@ -45,12 +45,12 @@ import '../utils/image.dart' as img;
 import '../common/widgets/dialog.dart';
 import 'input_model.dart';
 import 'platform_model.dart';
-import 'package:flutter_hbb/utils/scale.dart';
+import 'package:shopremote2/utils/scale.dart';
 
-import 'package:flutter_hbb/generated_bridge.dart'
-    if (dart.library.html) 'package:flutter_hbb/web/bridge.dart';
-import 'package:flutter_hbb/native/custom_cursor.dart'
-    if (dart.library.html) 'package:flutter_hbb/web/custom_cursor.dart';
+import 'package:shopremote2/generated_bridge.dart'
+    if (dart.library.html) 'package:shopremote2/web/bridge.dart';
+import 'package:shopremote2/native/custom_cursor.dart'
+    if (dart.library.html) 'package:shopremote2/web/custom_cursor.dart';
 
 typedef HandleMsgBox = Function(Map<String, dynamic> evt, String id);
 typedef ReconnectHandle = Function(OverlayDialogManager, SessionID, bool);
@@ -1632,7 +1632,7 @@ class FfiModel with ChangeNotifier {
     }
 
     if (updateData.isEmpty) {
-      _pi.platformAdditions.remove(kPlatformAdditionsRustDeskVirtualDisplays);
+      _pi.platformAdditions.remove(kPlatformAdditionsShopRemote2VirtualDisplays);
       _pi.platformAdditions.remove(kPlatformAdditionsAmyuniVirtualDisplays);
     } else {
       try {
@@ -1641,9 +1641,9 @@ class FfiModel with ChangeNotifier {
           _pi.platformAdditions[key] = updateJson[key];
         }
         if (!updateJson
-            .containsKey(kPlatformAdditionsRustDeskVirtualDisplays)) {
+            .containsKey(kPlatformAdditionsShopRemote2VirtualDisplays)) {
           _pi.platformAdditions
-              .remove(kPlatformAdditionsRustDeskVirtualDisplays);
+              .remove(kPlatformAdditionsShopRemote2VirtualDisplays);
         }
         if (!updateJson.containsKey(kPlatformAdditionsAmyuniVirtualDisplays)) {
           _pi.platformAdditions.remove(kPlatformAdditionsAmyuniVirtualDisplays);
@@ -4007,8 +4007,8 @@ class PeerInfo with ChangeNotifier {
   bool get isInstalled =>
       platform != kPeerPlatformWindows ||
       platformAdditions[kPlatformAdditionsIsInstalled] == true;
-  List<int> get RustDeskVirtualDisplays => List<int>.from(
-      platformAdditions[kPlatformAdditionsRustDeskVirtualDisplays] ?? []);
+  List<int> get ShopRemote2VirtualDisplays => List<int>.from(
+      platformAdditions[kPlatformAdditionsShopRemote2VirtualDisplays] ?? []);
   int get amyuniVirtualDisplayCount =>
       platformAdditions[kPlatformAdditionsAmyuniVirtualDisplays] ?? 0;
 
@@ -4018,8 +4018,8 @@ class PeerInfo with ChangeNotifier {
 
   bool get cursorEmbedded => tryGetDisplay()?.cursorEmbedded ?? false;
 
-  bool get isRustDeskIdd =>
-      platformAdditions[kPlatformAdditionsIddImpl] == 'rustdesk_idd';
+  bool get isShopRemote2Idd =>
+      platformAdditions[kPlatformAdditionsIddImpl] == 'shopremote2_idd';
   bool get isAmyuniIdd =>
       platformAdditions[kPlatformAdditionsIddImpl] == 'amyuni_idd';
 

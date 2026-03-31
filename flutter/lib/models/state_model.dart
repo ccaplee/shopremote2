@@ -1,5 +1,5 @@
 import 'package:desktop_multi_window/desktop_multi_window.dart';
-import 'package:flutter_hbb/common.dart';
+import 'package:shopremote2/common.dart';
 import 'package:get/get.dart';
 
 import '../consts.dart';

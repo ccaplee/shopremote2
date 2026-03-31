@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/consts.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/consts.dart';
 
-import 'package:flutter_hbb/models/peer_model.dart';
+import 'package:shopremote2/models/peer_model.dart';
 
 import '../../models/platform_model.dart';
 

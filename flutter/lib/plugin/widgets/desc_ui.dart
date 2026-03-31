@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/models/model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/models/model.dart';
 import 'package:provider/provider.dart';
 import 'package:get/get.dart';
 // to-do: do not depend on desktop
-import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
+import 'package:shopremote2/desktop/widgets/remote_toolbar.dart';
+import 'package:shopremote2/models/platform_model.dart';
 
 import '../manager.dart';
 import '../model.dart';
@@ -205,7 +205,7 @@ class PluginItem extends StatelessWidget {
             );
           }
         },
-        // to-do: RustDesk translate or plugin translate ?
+        // to-do: ShopRemote2 translate or plugin translate ?
         child: Text(ui.text),
         ffi: ffi,
       );
@@ -235,7 +235,7 @@ class PluginItem extends StatelessWidget {
       // trailingIcon: Icon(
       //     IconData(int.parse(ui.icon, radix: 16), fontFamily: 'MaterialIcons')),
       //
-      // to-do: RustDesk translate or plugin translate ?
+      // to-do: ShopRemote2 translate or plugin translate ?
       child: Text(ui.text),
       ffi: ffi,
     );

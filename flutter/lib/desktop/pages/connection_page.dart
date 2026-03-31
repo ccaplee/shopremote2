@@ -5,14 +5,14 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
-import 'package:flutter_hbb/models/state_model.dart';
+import 'package:shopremote2/common/widgets/connection_page_title.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/desktop/widgets/popup_menu.dart';
+import 'package:shopremote2/models/state_model.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:flutter_hbb/models/peer_model.dart';
+import 'package:shopremote2/models/peer_model.dart';
 
 import '../../common.dart';
 import '../../common/formatter/id_formatter.dart';

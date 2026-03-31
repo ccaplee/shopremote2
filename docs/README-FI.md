@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../res/logo-header.svg" alt="RustDesk - Etätyöpöytäsi"><br>
+  <img src="../res/logo-header.svg" alt="ShopRemote2 - Etätyöpöytäsi"><br>
   <a href="#free-public-servers">Palvelimet</a> •
   <a href="#raw-steps-to-build">Rakenna</a> •
   <a href="#how-to-build-with-docker">Docker</a> •
@@ -9,13 +9,13 @@
   <b>Tarvitsemme apua tämän README-tiedoston kääntämiseksi äidinkielellesi</b>
 </p>
 
-Juttele meidän kanssa: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/rustdesk) | [Reddit](https://www.reddit.com/r/rustdesk) | [YouTube](https://www.youtube.com/@rustdesk)
+Juttele meidän kanssa: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/shopremote2) | [Reddit](https://www.reddit.com/r/shopremote2) | [YouTube](https://www.youtube.com/@shopremote2)
 
-[![RustDesk Server Pro](https://img.shields.io/badge/RustDesk%20Server%20Pro-Edistyneet%20Ominaisuudet-blue)](https://rustdesk.com/pricing.html)
+[![ShopRemote2 Server Pro](https://img.shields.io/badge/ShopRemote2%20Server%20Pro-Edistyneet%20Ominaisuudet-blue)](https://rustdesk.com/pricing.html)
 
 Vielä yksi etätyöpöytäohjelmisto, ohjelmoitu Rust-kielellä. Toimii suoraan pakkauksesta, ei tarvitse asetusta. Hallitset täysin tietojasi, ei tarvitse murehtia turvallisuutta. Voit käyttää meidän rendezvous/relay-palvelinta, [aseta omasi](https://rustdesk.com/server), tai [kirjoittaa oma rendezvous/relay-palvelin](https://github.com/rustdesk/rustdesk-server-demo).
 
-RustDesk toivottaa avustukset tervetulleiksi kaikilta. Katso lisätietoja [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) avun saamiseksi.
+ShopRemote2 toivottaa avustukset tervetulleiksi kaikilta. Katso lisätietoja [`docs/CONTRIBUTING.md`](CONTRIBUTING.md) avun saamiseksi.
 
 [**BINAARILATAUS**](https://github.com/rustdesk/rustdesk/releases)
 
@@ -89,7 +89,7 @@ cd
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
 git clone https://github.com/rustdesk/rustdesk
-cd rustdesk
+cd shopremote2
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
 mv libsciter-gtk.so target/debug
@@ -102,29 +102,29 @@ Aloita kloonaamalla tietovarasto ja rakentamalla docker-säiliö:
 
 ```sh
 git clone https://github.com/rustdesk/rustdesk
-cd rustdesk
-docker build -t "rustdesk-builder" .
+cd shopremote2
+docker build -t "shopremote2-builder" .
 ```
 
 Sitten, joka kerta kun sinun on rakennettava sovellus, suorita seuraava komento:
 
 ```sh
-docker run --rm -it -v $PWD:/home/user/rustdesk -v rustdesk-git-cache:/home/user/.cargo/git -v rustdesk-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" rustdesk-builder
+docker run --rm -it -v $PWD:/home/user/shopremote2 -v shopremote2-git-cache:/home/user/.cargo/git -v shopremote2-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" shopremote2-builder
 ```
 
 Huomaa, että ensimmäinen rakentaminen saattaa kestää pitempään ennen kuin riippuvuudet on siirretty välimuistiin, seuraavat rakentamiset ovat nopeampia. Lisäksi, jos sinun on määritettävä eri väittämiä rakentamiskomennolle, saatat tehdä sen niin, että komennon lopussa <OPTIONAL-ARGS>`-kohdassa. Esimerkiksi, jos haluat rakentaa optimoidun julkaisuversion, sinun on ajettava komento yllä siten, että sitä seuraa väittämä`--release`. Suoritettava tiedosto on saatavilla järjestelmäsi kohdehakemistossa, ja se voidaan suorittaa seuraavan kera:
 
 ```sh
-target/debug/rustdesk
+target/debug/shopremote2
 ```
 
 Tai, jos olet suorittamassa jakeluversion suoritettavaa tiedostoa:
 
 ```sh
-target/release/rustdesk
+target/release/shopremote2
 ```
 
-Varmista, että suoritat näitä komentoja RustDesktop-tietovaraston juurihakemistossa, muutoin sovellus ei ehkä löydä vaadittuja resursseja. Huomaa myös, että muita cargo-alikomentoja kuten `install` tai `run` ei nykyisin tueta tässä menetelmässä, koska ne asentavat tai suorittavat ohjelman säiliön sisällä eikä isäntäohjelman sisällä.
+Varmista, että suoritat näitä komentoja ShopRemote2top-tietovaraston juurihakemistossa, muutoin sovellus ei ehkä löydä vaadittuja resursseja. Huomaa myös, että muita cargo-alikomentoja kuten `install` tai `run` ei nykyisin tueta tässä menetelmässä, koska ne asentavat tai suorittavat ohjelman säiliön sisällä eikä isäntäohjelman sisällä.
 
 ## Tiedostorakenne
 

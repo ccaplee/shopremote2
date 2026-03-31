@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd "$HOME"/rustdesk || exit 1
+cd "$HOME"/shopremote2 || exit 1
 # shellcheck source=/dev/null
 . "$HOME"/.cargo/env
 

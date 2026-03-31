@@ -1,6 +1,6 @@
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/models/platform_model.dart';
 
 class PrinterOptions {
   String action;

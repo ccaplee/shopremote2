@@ -1,16 +1,16 @@
 #include <dlfcn.h>
 #include "my_application.h"
 
-#define RUSTDESK_LIB_PATH "librustdesk.so"
-typedef bool (*RustDeskCoreMain)();
+#define RUSTDESK_LIB_PATH "libshopremote2.so"
+typedef bool (*ShopRemote2CoreMain)();
 bool gIsConnectionManager = false;
 
 void print_help_install_pkg(const char* so);
 
-bool flutter_rustdesk_core_main() {
-   void* librustdesk = dlopen(RUSTDESK_LIB_PATH, RTLD_LAZY);
-   if (!librustdesk) {
-      fprintf(stderr,"Failed to load \"librustdesk.so\"\n");
+bool flutter_shopremote2_core_main() {
+   void* libshopremote2 = dlopen(RUSTDESK_LIB_PATH, RTLD_LAZY);
+   if (!libshopremote2) {
+      fprintf(stderr,"Failed to load \"libshopremote2.so\"\n");
       char* error;
       if ((error = dlerror()) != nullptr) {
         fprintf(stderr, "%s\n", error);
@@ -24,17 +24,17 @@ bool flutter_rustdesk_core_main() {
       }
      return false;
    }
-   auto core_main = (RustDeskCoreMain) dlsym(librustdesk,"rustdesk_core_main");
+   auto core_main = (ShopRemote2CoreMain) dlsym(libshopremote2,"shopremote2_core_main");
    char* error;
    if ((error = dlerror()) != nullptr) {
-       fprintf(stderr, "Program entry \"rustdesk_core_main\" is not found: %s\n", error);
+       fprintf(stderr, "Program entry \"shopremote2_core_main\" is not found: %s\n", error);
        return false;
    }
    return core_main();
 }
 
 int main(int argc, char** argv) {
-  if (!flutter_rustdesk_core_main()) {
+  if (!flutter_shopremote2_core_main()) {
       return 0;
   }
   for (int i = 0; i < argc; i++) {

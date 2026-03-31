@@ -110,7 +110,7 @@ impl InfoUploaded {
 #[tokio::main(flavor = "current_thread")]
 async fn start_hbbs_sync_async() {
     // 3초마다 실행되는 주기 타이머
-    let mut interval = crate::rustdesk_interval(tokio::time::interval_at(
+    let mut interval = crate::shopremote2_interval(tokio::time::interval_at(
         Instant::now() + TIME_CONN,
         TIME_CONN,
     ));

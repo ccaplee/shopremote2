@@ -3,15 +3,15 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/common/shared_state.dart';
-import 'package:flutter_hbb/common/widgets/dialog.dart';
-import 'package:flutter_hbb/common/widgets/login.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
-import 'package:flutter_hbb/models/model.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/utils/multi_window_manager.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/common/shared_state.dart';
+import 'package:shopremote2/common/widgets/dialog.dart';
+import 'package:shopremote2/common/widgets/login.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/desktop/widgets/remote_toolbar.dart';
+import 'package:shopremote2/models/model.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/utils/multi_window_manager.dart';
 import 'package:get/get.dart';
 
 bool isEditOsPassword = false;
@@ -927,7 +927,7 @@ bool showVirtualDisplayMenu(FFI ffi) {
   if (!ffi.ffiModel.pi.isInstalled) {
     return false;
   }
-  if (ffi.ffiModel.pi.isRustDeskIdd || ffi.ffiModel.pi.isAmyuniIdd) {
+  if (ffi.ffiModel.pi.isShopRemote2Idd || ffi.ffiModel.pi.isAmyuniIdd) {
     return true;
   }
   return false;
@@ -940,8 +940,8 @@ List<Widget> getVirtualDisplayMenuChildren(
   }
   final pi = ffi.ffiModel.pi;
   final privacyModeState = PrivacyModeState.find(id);
-  if (pi.isRustDeskIdd) {
-    final virtualDisplays = ffi.ffiModel.pi.RustDeskVirtualDisplays;
+  if (pi.isShopRemote2Idd) {
+    final virtualDisplays = ffi.ffiModel.pi.ShopRemote2VirtualDisplays;
     final children = <Widget>[];
     for (var i = 0; i < kMaxVirtualDisplayCount; i++) {
       children.add(Obx(() => CkbMenuButton(

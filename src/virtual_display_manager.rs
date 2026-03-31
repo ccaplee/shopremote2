@@ -1,12 +1,12 @@
 use hbb_common::{bail, platform::windows::is_windows_version_or_greater, ResultType};
 
 // 이 문자열은 여기에 정의되어 있습니다.
-//  https://github.com/rustdesk-org/RustDeskIddDriver/blob/b370aad3f50028b039aad211df60c8051c4a64d6/RustDeskIddDriver/RustDeskIddDriver.inf#LL73C1-L73C40
-pub const RUSTDESK_IDD_DEVICE_STRING: &'static str = "RustDeskIddDriver Device\0";
+//  https://github.com/rustdesk-org/ShopRemote2IddDriver/blob/b370aad3f50028b039aad211df60c8051c4a64d6/ShopRemote2IddDriver/ShopRemote2IddDriver.inf#LL73C1-L73C40
+pub const RUSTDESK_IDD_DEVICE_STRING: &'static str = "ShopRemote2IddDriver Device\0";
 pub const AMYUNI_IDD_DEVICE_STRING: &'static str = "USB Mobile Monitor Virtual Display\0";
 
 const IDD_IMPL: &str = IDD_IMPL_AMYUNI;
-const IDD_IMPL_RUSTDESK: &str = "rustdesk_idd";
+const IDD_IMPL_RUSTDESK: &str = "shopremote2_idd";
 const IDD_IMPL_AMYUNI: &str = "amyuni_idd";
 const IDD_PLUG_OUT_ALL_INDEX: i32 = -1;
 
@@ -35,7 +35,7 @@ pub fn is_virtual_display_supported() -> bool {
 
 pub fn plug_in_headless() -> ResultType<()> {
     match IDD_IMPL {
-        IDD_IMPL_RUSTDESK => rustdesk_idd::plug_in_headless(),
+        IDD_IMPL_RUSTDESK => shopremote2_idd::plug_in_headless(),
         IDD_IMPL_AMYUNI => amyuni_idd::plug_in_headless(),
         _ => bail!("Unsupported virtual display implementation."),
     }
@@ -49,10 +49,10 @@ pub fn get_platform_additions() -> serde_json::Map<String, serde_json::Value> {
     map.insert("idd_impl".into(), serde_json::json!(IDD_IMPL));
     match IDD_IMPL {
         IDD_IMPL_RUSTDESK => {
-            let virtual_displays = rustdesk_idd::get_virtual_displays();
+            let virtual_displays = shopremote2_idd::get_virtual_displays();
             if !virtual_displays.is_empty() {
                 map.insert(
-                    "rustdesk_virtual_displays".into(),
+                    "shopremote2_virtual_displays".into(),
                     serde_json::json!(virtual_displays),
                 );
             }
@@ -71,7 +71,7 @@ pub fn get_platform_additions() -> serde_json::Map<String, serde_json::Value> {
 #[inline]
 pub fn plug_in_monitor(idx: u32, modes: Vec<virtual_display::MonitorMode>) -> ResultType<()> {
     match IDD_IMPL {
-        IDD_IMPL_RUSTDESK => rustdesk_idd::plug_in_index_modes(idx, modes),
+        IDD_IMPL_RUSTDESK => shopremote2_idd::plug_in_index_modes(idx, modes),
         IDD_IMPL_AMYUNI => amyuni_idd::plug_in_monitor(),
         _ => bail!("Unsupported virtual display implementation."),
     }
@@ -81,11 +81,11 @@ pub fn plug_out_monitor(index: i32, force_all: bool, force_one: bool) -> ResultT
     match IDD_IMPL {
         IDD_IMPL_RUSTDESK => {
             let indices = if index == IDD_PLUG_OUT_ALL_INDEX {
-                rustdesk_idd::get_virtual_displays()
+                shopremote2_idd::get_virtual_displays()
             } else {
                 vec![index as _]
             };
-            rustdesk_idd::plug_out_peer_request(&indices)
+            shopremote2_idd::plug_out_peer_request(&indices)
         }
         IDD_IMPL_AMYUNI => amyuni_idd::plug_out_monitor(index, force_all, force_one),
         _ => bail!("Unsupported virtual display implementation."),
@@ -94,7 +94,7 @@ pub fn plug_out_monitor(index: i32, force_all: bool, force_one: bool) -> ResultT
 
 pub fn plug_in_peer_request(modes: Vec<Vec<virtual_display::MonitorMode>>) -> ResultType<Vec<u32>> {
     match IDD_IMPL {
-        IDD_IMPL_RUSTDESK => rustdesk_idd::plug_in_peer_request(modes),
+        IDD_IMPL_RUSTDESK => shopremote2_idd::plug_in_peer_request(modes),
         IDD_IMPL_AMYUNI => {
             amyuni_idd::plug_in_monitor()?;
             Ok(vec![0])
@@ -109,7 +109,7 @@ pub fn plug_out_monitor_indices(
     force_one: bool,
 ) -> ResultType<()> {
     match IDD_IMPL {
-        IDD_IMPL_RUSTDESK => rustdesk_idd::plug_out_peer_request(indices),
+        IDD_IMPL_RUSTDESK => shopremote2_idd::plug_out_peer_request(indices),
         IDD_IMPL_AMYUNI => {
             for _idx in indices.iter() {
                 amyuni_idd::plug_out_monitor(0, force_all, force_one)?;
@@ -122,13 +122,13 @@ pub fn plug_out_monitor_indices(
 
 pub fn reset_all() -> ResultType<()> {
     match IDD_IMPL {
-        IDD_IMPL_RUSTDESK => rustdesk_idd::reset_all(),
+        IDD_IMPL_RUSTDESK => shopremote2_idd::reset_all(),
         IDD_IMPL_AMYUNI => amyuni_idd::reset_all(),
         _ => bail!("Unsupported virtual display implementation."),
     }
 }
 
-pub mod rustdesk_idd {
+pub mod shopremote2_idd {
     use super::windows;
     use hbb_common::{allow_err, bail, lazy_static, log, ResultType};
     use std::{
@@ -414,7 +414,7 @@ pub mod amyuni_idd {
     // 연결된 가상 디스플레이의 수입니다.
     // 이 개수는 정확하지 않습니다. 이유는:
     // 1. The virtual display driver may also be controlled by other processes.
-    // 2. RustDesk may crash and restart, but the virtual displays are kept.
+    // 2. ShopRemote2 may crash and restart, but the virtual displays are kept.
     //
     // 할 일: 더 나은 방법은 연결 해제 시 모든 가상 디스플레이를 뽑을지 묻는 옵션을 추가하는 것입니다.
     static VIRTUAL_DISPLAY_COUNT: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
@@ -661,19 +661,19 @@ pub mod amyuni_idd {
     // `index` the display index to plug out. -1 means plug out all.
     // `force_all` is used to forcibly plug out all virtual displays.
     // `force_one` is used to forcibly plug out one virtual display managed by other processes
-    //             RustDesk에서 관리하는 가상 디스플레이가 없는 경우입니다.
+    //             ShopRemote2에서 관리하는 가상 디스플레이가 없는 경우입니다.
     pub fn plug_out_monitor(index: i32, force_all: bool, force_one: bool) -> ResultType<()> {
         let plug_out_all = index == super::IDD_PLUG_OUT_ALL_INDEX;
         // `plug_out_all and force_all`이 true이면 모든 가상 디스플레이를 강제로 분리합니다.
         // Though the driver may be controlled by other processes,
         // we still forcibly plug out all virtual displays.
         //
-        // 1. RustDesk plug in 2 virtual displays. (RustDesk)
+        // 1. ShopRemote2 plug in 2 virtual displays. (ShopRemote2)
         // 2. Other process plug out all virtual displays. (User manually)
         // 3. Other process plug in 1 virtual display. (User manually)
-        // 4. RustDesk plug out all virtual displays in this call. (RustDesk disconnect)
+        // 4. ShopRemote2 plug out all virtual displays in this call. (ShopRemote2 disconnect)
         //
-        // This is not a normal scenario, RustDesk will plug out virtual display unexpectedly.
+        // This is not a normal scenario, ShopRemote2 will plug out virtual display unexpectedly.
         let mut plug_in_count = VIRTUAL_DISPLAY_COUNT.load(atomic::Ordering::Relaxed);
         let amyuni_count = get_monitor_count();
         if !plug_out_all {

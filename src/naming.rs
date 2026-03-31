@@ -22,7 +22,7 @@ fn gen_name(lic: &CustomServer) -> ResultType<String> {
 ///
 /// 사용 방법:
 /// 1. 인코딩: ./naming key host [api] [relay]
-///    -> 출력: rustdesk-custom_serverd-{인코딩된_문자열}.exe
+///    -> 출력: shopremote2-custom_serverd-{인코딩된_문자열}.exe
 /// 2. 디코딩: ./naming {인코딩된_문자열}
 ///    -> 출력: 원본 CustomServer 구조체
 fn main() {
@@ -40,7 +40,7 @@ fn main() {
             api,
             relay,
         }) {
-            Ok(name) => println!("rustdesk-custom_serverd-{}.exe", name),
+            Ok(name) => println!("shopremote2-custom_serverd-{}.exe", name),
             Err(e) => println!("{:?}", e),
         }
     }

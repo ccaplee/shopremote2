@@ -23,7 +23,7 @@ sciter.dll
 src/bridge_generated.rs
 src/bridge_generated.io.rs
 *deb
-rustdesk
+shopremote2
 *.cache
 # appimage
 appimage/AppDir

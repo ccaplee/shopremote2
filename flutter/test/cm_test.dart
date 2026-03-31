@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/desktop/pages/server_page.dart';
-import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
-import 'package:flutter_hbb/main.dart';
-import 'package:flutter_hbb/models/server_model.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/desktop/pages/server_page.dart';
+import 'package:shopremote2/desktop/widgets/tabbar_widget.dart';
+import 'package:shopremote2/main.dart';
+import 'package:shopremote2/models/server_model.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 import 'package:window_manager/window_manager.dart';

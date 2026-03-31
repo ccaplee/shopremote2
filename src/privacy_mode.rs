@@ -381,7 +381,7 @@ pub fn get_supported_privacy_mode_impl() -> Vec<(&'static str, &'static str)> {
             }
         }
 
-        // 가상 디스플레이 지원 (RustDesk 서비스 설치 필요)
+        // 가상 디스플레이 지원 (ShopRemote2 서비스 설치 필요)
         if is_installed() && crate::platform::windows::is_self_service_running() {
             vec_impls.push((
                 PRIVACY_MODE_IMPL_WIN_VIRTUAL_DISPLAY,

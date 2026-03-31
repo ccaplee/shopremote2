@@ -8,11 +8,11 @@ import 'dart:html';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_hbb/common/widgets/login.dart';
-import 'package:flutter_hbb/models/state_model.dart';
+import 'package:shopremote2/common/widgets/login.dart';
+import 'package:shopremote2/models/state_model.dart';
 
-import 'package:flutter_hbb/web/bridge.dart';
-import 'package:flutter_hbb/common.dart';
+import 'package:shopremote2/web/bridge.dart';
+import 'package:shopremote2/common.dart';
 import 'package:uuid/uuid.dart';
 
 final List<StreamSubscription<MouseEvent>> mouseListeners = [];

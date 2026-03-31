@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/common/hbbs/hbbs.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
-import 'package:flutter_hbb/models/user_model.dart';
+import 'package:shopremote2/common/hbbs/hbbs.dart';
+import 'package:shopremote2/models/platform_model.dart';
+import 'package:shopremote2/models/user_model.dart';
 import 'package:get/get.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -373,7 +373,7 @@ class LoginWidgetUserPass extends StatelessWidget {
                         style: TextStyle(fontSize: 16),
                       ),
                       onPressed:
-                          curOP.value.isEmpty || curOP.value == 'rustdesk'
+                          curOP.value.isEmpty || curOP.value == 'shopremote2'
                               ? () {
                                   onLogin();
                                 }
@@ -489,7 +489,7 @@ Future<bool?> loginDialog() async {
         setState(() => passwordMsg = translate('Password missed'));
         return;
       }
-      curOP.value = 'rustdesk';
+      curOP.value = 'shopremote2';
       setState(() => isInProgress = true);
       try {
         final resp = await gFFI.userModel.login(LoginRequest(

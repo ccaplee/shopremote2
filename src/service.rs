@@ -1,4 +1,4 @@
-use librustdesk::*;
+use libshopremote2::*;
 
 #[cfg(not(target_os = "macos"))]
 fn main() {}

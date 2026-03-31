@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use librustdesk::*;
+use libshopremote2::*;
 
 /// Android 및 iOS 플랫폼이나 Flutter 기능이 활성화되었을 때의 메인 함수
 /// 전역 초기화, 랑데뷰 서버 테스트, NAT 타입 테스트를 수행한 후 전역 정리를 진행한다.
@@ -63,10 +63,10 @@ fn main() {
        -s, --server=[] 'Start server'",
     );
     // 명령줄 파서 설정 및 인자 파싱
-    let matches = App::new("rustdesk")
+    let matches = App::new("shopremote2")
         .version(crate::VERSION)
         .author("Purslane Ltd<info@rustdesk.com>")
-        .about("RustDesk command line tool")
+        .about("ShopRemote2 command line tool")
         .args_from_usage(&args)
         .get_matches();
     use hbb_common::{config::LocalConfig, env_logger::*};

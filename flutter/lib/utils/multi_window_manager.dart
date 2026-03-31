@@ -4,10 +4,10 @@ import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_hbb/consts.dart';
-import 'package:flutter_hbb/common.dart';
-import 'package:flutter_hbb/main.dart';
-import 'package:flutter_hbb/models/input_model.dart';
+import 'package:shopremote2/consts.dart';
+import 'package:shopremote2/common.dart';
+import 'package:shopremote2/main.dart';
+import 'package:shopremote2/models/input_model.dart';
 
 /// must keep the order
 // ignore: constant_identifier_names
@@ -52,10 +52,10 @@ class MultiWindowCallResult {
 /// Window Manager
 /// mainly use it in `Main Window`
 /// use it in sub window is not recommended
-class RustDeskMultiWindowManager {
-  RustDeskMultiWindowManager._();
+class ShopRemote2MultiWindowManager {
+  ShopRemote2MultiWindowManager._();
 
-  static final instance = RustDeskMultiWindowManager._();
+  static final instance = ShopRemote2MultiWindowManager._();
 
   final Set<int> _inactiveWindows = {};
   final Set<int> _activeWindows = {};
@@ -578,4 +578,4 @@ class RustDeskMultiWindowManager {
   }
 }
 
-final rustDeskWinManager = RustDeskMultiWindowManager.instance;
+final rustDeskWinManager = ShopRemote2MultiWindowManager.instance;
