@@ -1,5 +1,5 @@
 Name:       shopremote2
-Version:    1.4.6
+Version:    2.0.1
 Release:    0
 Summary:    RPM package
 License:    GPL-3.0

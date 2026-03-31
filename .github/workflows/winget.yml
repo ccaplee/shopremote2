@@ -10,6 +10,6 @@ jobs:
       - uses: vedantmgoyal9/winget-releaser@main
         with:
           identifier: ShopRemote2.ShopRemote2
-          version: "1.4.6"
-          release-tag: "1.4.6"
+          version: "2.0.1"
+          release-tag: "2.0.1"
           token: ${{ secrets.WINGET_TOKEN }}

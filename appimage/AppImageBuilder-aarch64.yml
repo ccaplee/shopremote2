@@ -18,7 +18,7 @@ AppDir:
     id: shopremote2
     name: shopremote2
     icon: shopremote2
-    version: 1.4.6
+    version: 2.0.1
     exec: usr/share/shopremote2/shopremote2
     exec_args: $@
   apt:

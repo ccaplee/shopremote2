@@ -1,6 +1,6 @@
 [package]
 name = "shopremote2-portable-packer"
-version = "1.4.6"
+version = "2.0.1"
 edition = "2021"
 description = "ShopRemote2 Remote Desktop"
 
