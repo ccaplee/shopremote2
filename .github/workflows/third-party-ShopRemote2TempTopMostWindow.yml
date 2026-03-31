@@ -36,19 +36,19 @@ jobs:
     strategy:
         fail-fast: false
     env:
-      build_output_dir: ShopRemote2TempTopMostWindow/WindowInjection/${{ inputs.platform }}/${{ inputs.configuration }}
+      build_output_dir: RustDeskTempTopMostWindow/WindowInjection/${{ inputs.platform }}/${{ inputs.configuration }}
     steps:
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
       - name: Download the source code
         run: |
-          git clone https://github.com/rustdesk-org/ShopRemote2TempTopMostWindow ShopRemote2TempTopMostWindow
+          git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
 
         # Build. commit 53b548a5398624f7149a382000397993542ad796 is tag v0.3
       - name: Build the project
         run: |
-          cd ShopRemote2TempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
+          cd RustDeskTempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
           msbuild ${{ env.project_path }} -p:Configuration=${{ inputs.configuration }} -p:Platform=${{ inputs.platform }} /p:TargetVersion=${{ inputs.target_version }}
 
       - name: Archive build artifacts
