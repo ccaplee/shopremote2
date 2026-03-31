@@ -166,7 +166,7 @@ impl PipeWireCapturable {
         stream: &PwStreamInfo,
     ) -> Self {
         // alternative to get screen resolution as stream.size is not always correct ex: on fractional scaling
-        // https://github.com/rustdesk/rustdesk/issues/6116#issuecomment-1817724244
+        // https://github.com/ccaplee/shopremote2/issues/6116#issuecomment-1817724244
         let physical_size = get_res(Self {
             dbus_conn: conn.clone(),
             fd: fd.clone(),
@@ -694,7 +694,7 @@ pub fn request_remote_desktop(
             }
         }
     }
-    bail!("Failed to obtain screen capture. You may need to upgrade the PipeWire library for better compatibility. Please check https://github.com/rustdesk/rustdesk/issues/8600#issuecomment-2254720954 for more details.")
+    bail!("화면 캡처를 가져올 수 없습니다. PipeWire 라이브러리를 업그레이드해야 할 수 있습니다.")
 }
 
 fn on_create_session_response(

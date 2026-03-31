@@ -1,65 +1,48 @@
 <p align="center">
-  <img src="res/logo-header.svg" alt="ShopRemote2 - Your remote desktop"><br>
-  <a href="#raw-steps-to-build">Build</a> •
-  <a href="#how-to-build-with-docker">Docker</a> •
-  <a href="#file-structure">Structure</a> •
-  <a href="#snapshot">Snapshot</a><br>
-  [<a href="docs/README-UA.md">Українська</a>] | [<a href="docs/README-CS.md">česky</a>] | [<a href="docs/README-ZH.md">中文</a>] | [<a href="docs/README-HU.md">Magyar</a>] | [<a href="docs/README-ES.md">Español</a>] | [<a href="docs/README-FA.md">فارسی</a>] | [<a href="docs/README-FR.md">Français</a>] | [<a href="docs/README-DE.md">Deutsch</a>] | [<a href="docs/README-PL.md">Polski</a>] | [<a href="docs/README-ID.md">Indonesian</a>] | [<a href="docs/README-FI.md">Suomi</a>] | [<a href="docs/README-ML.md">മലയാളം</a>] | [<a href="docs/README-JP.md">日本語</a>] | [<a href="docs/README-NL.md">Nederlands</a>] | [<a href="docs/README-IT.md">Italiano</a>] | [<a href="docs/README-RU.md">Русский</a>] | [<a href="docs/README-PTBR.md">Português (Brasil)</a>] | [<a href="docs/README-EO.md">Esperanto</a>] | [<a href="docs/README-KR.md">한국어</a>] | [<a href="docs/README-AR.md">العربي</a>] | [<a href="docs/README-VN.md">Tiếng Việt</a>] | [<a href="docs/README-DA.md">Dansk</a>] | [<a href="docs/README-GR.md">Ελληνικά</a>] | [<a href="docs/README-TR.md">Türkçe</a>] | [<a href="docs/README-NO.md">Norsk</a>] | [<a href="docs/README-RO.md">Română</a>]<br>
-  <b>We need your help to translate this README, <a href="https://github.com/rustdesk/rustdesk/tree/master/src/lang">ShopRemote2 UI</a> and <a href="https://github.com/rustdesk/doc.rustdesk.com">ShopRemote2 Doc</a> to your native language</b>
+  <img src="res/logo-header.svg" alt="ShopRemote2 - 원격 데스크톱"><br>
+  <a href="#빌드-방법">빌드</a> •
+  <a href="#docker로-빌드하기">Docker</a> •
+  <a href="#파일-구조">구조</a> •
+  <a href="#스크린샷">스크린샷</a>
 </p>
 
 > [!Caution]
-> **Misuse Disclaimer:** <br>
-> The developers of ShopRemote2 do not condone or support any unethical or illegal use of this software. Misuse, such as unauthorized access, control or invasion of privacy, is strictly against our guidelines. The authors are not responsible for any misuse of the application.
+> **면책 조항:** <br>
+> ShopRemote2 개발자는 이 소프트웨어의 비윤리적이거나 불법적인 사용을 지지하거나 허용하지 않습니다. 무단 접근, 제어 또는 개인정보 침해와 같은 오용은 당사의 가이드라인에 엄격히 반합니다. 저자는 애플리케이션의 오용에 대해 책임을 지지 않습니다.
 
+## ShopRemote2 소개
 
-Chat with us: [Discord](https://discord.gg/nDceKgxnkV) | [Twitter](https://twitter.com/shopremote2) | [Reddit](https://www.reddit.com/r/shopremote2) | [YouTube](https://www.youtube.com/@shopremote2)
+Rust로 작성된 원격 데스크톱 솔루션입니다. 별도의 설정 없이 바로 사용할 수 있으며, 데이터에 대한 완전한 제어권을 가지므로 보안 걱정이 없습니다. 기본 제공되는 랑데부/릴레이 서버를 사용하거나, 자체 서버를 구축할 수 있습니다.
 
-[![ShopRemote2 Server Pro](https://img.shields.io/badge/ShopRemote2%20Server%20Pro-Advanced%20Features-blue)](https://rustdesk.com/pricing.html)
+**주요 특징:**
+- 설정 없이 바로 사용 가능
+- 자체 서버 구축 지원
+- Windows, macOS, Linux, Android, iOS 지원
+- 파일 전송, TCP 터널링, 클립보드 공유
+- 높은 보안성과 안정성
 
-Yet another remote desktop solution, written in Rust. Works out of the box with no configuration required. You have full control of your data, with no concerns about security. You can use our rendezvous/relay server, [set up your own](https://rustdesk.com/server), or [write your own rendezvous/relay server](https://github.com/rustdesk/rustdesk-server-demo).
+## 의존성
 
-![image](https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png)
+데스크톱 버전은 Flutter 또는 Sciter(지원 중단)를 GUI로 사용합니다. 이 안내는 Sciter 전용으로, 시작하기가 더 쉽고 친숙합니다.
 
-ShopRemote2 welcomes contribution from everyone. See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for help getting started.
-
-[**FAQ**](https://github.com/rustdesk/rustdesk/wiki/FAQ)
-
-[**BINARY DOWNLOAD**](https://github.com/rustdesk/rustdesk/releases)
-
-[**NIGHTLY BUILD**](https://github.com/rustdesk/rustdesk/releases/tag/nightly)
-
-[<img src="https://f-droid.org/badge/get-it-on.png"
-    alt="Get it on F-Droid"
-    height="80">](https://f-droid.org/en/packages/com.shopremote2.app)
-[<img src="https://flathub.org/api/badge?svg&locale=en"
-    alt="Get it on Flathub"
-    height="80">](https://flathub.org/apps/com.shopremote2.app)
-
-## Dependencies
-
-Desktop versions use Flutter or Sciter (deprecated) for GUI, this tutorial is for Sciter only, since it is easier and more friendly to start. Check out our [CI](https://github.com/rustdesk/rustdesk/blob/master/.github/workflows/flutter-build.yml) for building Flutter version.
-
-Please download Sciter dynamic library yourself.
+Sciter 동적 라이브러리를 직접 다운로드하세요:
 
 [Windows](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.win/x64/sciter.dll) |
 [Linux](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so) |
 [macOS](https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.osx/libsciter.dylib)
 
-## Raw Steps to build
+## 빌드 방법
 
-- Prepare your Rust development env and C++ build env
+- Rust 개발 환경과 C++ 빌드 환경을 준비하세요
 
-- Install [vcpkg](https://github.com/microsoft/vcpkg), and set `VCPKG_ROOT` env variable correctly
+- [vcpkg](https://github.com/microsoft/vcpkg)를 설치하고, `VCPKG_ROOT` 환경 변수를 올바르게 설정하세요
 
   - Windows: vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
   - Linux/macOS: vcpkg install libvpx libyuv opus aom
 
-- run `cargo run`
+- `cargo run` 실행
 
-## [Build](https://rustdesk.com/docs/en/dev/build/)
-
-## How to Build on Linux
+## Linux에서 빌드하기
 
 ### Ubuntu 18 (Debian 10)
 
@@ -87,7 +70,7 @@ sudo yum -y install gcc-c++ git curl wget nasm yasm gcc gtk3-devel clang libxcb-
 sudo pacman -Syu --needed unzip git cmake gcc curl wget yasm nasm zip make pkg-config clang gtk3 xdotool libxcb libxfixes alsa-lib pipewire
 ```
 
-### Install vcpkg
+### vcpkg 설치
 
 ```sh
 git clone https://github.com/microsoft/vcpkg
@@ -99,7 +82,7 @@ export VCPKG_ROOT=$HOME/vcpkg
 vcpkg/vcpkg install libvpx libyuv opus aom
 ```
 
-### Fix libvpx (For Fedora)
+### libvpx 수정 (Fedora용)
 
 ```sh
 cd vcpkg/buildtrees/libvpx/src
@@ -112,12 +95,12 @@ cp libvpx.a $HOME/vcpkg/installed/x64-linux/lib/
 cd
 ```
 
-### Build
+### 빌드 실행
 
 ```sh
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source $HOME/.cargo/env
-git clone --recurse-submodules https://github.com/rustdesk/rustdesk
+git clone --recurse-submodules https://github.com/ccaplee/shopremote2
 cd shopremote2
 mkdir -p target/debug
 wget https://raw.githubusercontent.com/c-smile/sciter-sdk/master/bin.lnx/x64/libsciter-gtk.so
@@ -125,58 +108,57 @@ mv libsciter-gtk.so target/debug
 VCPKG_ROOT=$HOME/vcpkg cargo run
 ```
 
-## How to build with Docker
+## Docker로 빌드하기
 
-Begin by cloning the repository and building the Docker container:
+저장소를 클론하고 Docker 컨테이너를 빌드합니다:
 
 ```sh
-git clone https://github.com/rustdesk/rustdesk
+git clone https://github.com/ccaplee/shopremote2
 cd shopremote2
 git submodule update --init --recursive
 docker build -t "shopremote2-builder" .
 ```
 
-Then, each time you need to build the application, run the following command:
+이후 애플리케이션을 빌드할 때마다 다음 명령을 실행합니다:
 
 ```sh
 docker run --rm -it -v $PWD:/home/user/shopremote2 -v shopremote2-git-cache:/home/user/.cargo/git -v shopremote2-registry-cache:/home/user/.cargo/registry -e PUID="$(id -u)" -e PGID="$(id -g)" shopremote2-builder
 ```
 
-Note that the first build may take longer before dependencies are cached, subsequent builds will be faster. Additionally, if you need to specify different arguments to the build command, you may do so at the end of the command in the `<OPTIONAL-ARGS>` position. For instance, if you wanted to build an optimized release version, you would run the command above followed by `--release`. The resulting executable will be available in the target folder on your system, and can be run with:
+첫 번째 빌드는 의존성 캐시가 생성되기 전이므로 시간이 다소 걸릴 수 있으며, 이후 빌드는 더 빠릅니다. 빌드 명령에 다른 인수를 지정하려면 명령 끝에 추가하면 됩니다. 예를 들어 최적화된 릴리스 버전을 빌드하려면 `--release`를 추가하세요. 결과 실행 파일은 시스템의 target 폴더에서 찾을 수 있으며, 다음과 같이 실행할 수 있습니다:
 
 ```sh
 target/debug/shopremote2
 ```
 
-Or, if you're running a release executable:
+릴리스 실행 파일의 경우:
 
 ```sh
 target/release/shopremote2
 ```
 
-Please ensure that you run these commands from the root of the ShopRemote2 repository, or the application may not find the required resources. Also note that other cargo subcommands such as `install` or `run` are not currently supported via this method as they would install or run the program inside the container instead of the host.
+ShopRemote2 저장소의 루트에서 이러한 명령을 실행해야 합니다. 그렇지 않으면 필요한 리소스를 찾지 못할 수 있습니다.
 
-## File Structure
+## 파일 구조
 
-- **[libs/hbb_common](https://github.com/rustdesk/rustdesk/tree/master/libs/hbb_common)**: video codec, config, tcp/udp wrapper, protobuf, fs functions for file transfer, and some other utility functions
-- **[libs/scrap](https://github.com/rustdesk/rustdesk/tree/master/libs/scrap)**: screen capture
-- **[libs/enigo](https://github.com/rustdesk/rustdesk/tree/master/libs/enigo)**: platform specific keyboard/mouse control
-- **[libs/clipboard](https://github.com/rustdesk/rustdesk/tree/master/libs/clipboard)**: file copy and paste implementation for Windows, Linux, macOS.
-- **[src/ui](https://github.com/rustdesk/rustdesk/tree/master/src/ui)**: obsolete Sciter UI (deprecated)
-- **[src/server](https://github.com/rustdesk/rustdesk/tree/master/src/server)**: audio/clipboard/input/video services, and network connections
-- **[src/client.rs](https://github.com/rustdesk/rustdesk/tree/master/src/client.rs)**: start a peer connection
-- **[src/rendezvous_mediator.rs](https://github.com/rustdesk/rustdesk/tree/master/src/rendezvous_mediator.rs)**: Communicate with [rustdesk-server](https://github.com/rustdesk/rustdesk-server), wait for remote direct (TCP hole punching) or relayed connection
-- **[src/platform](https://github.com/rustdesk/rustdesk/tree/master/src/platform)**: platform specific code
-- **[flutter](https://github.com/rustdesk/rustdesk/tree/master/flutter)**: Flutter code for desktop and mobile
-- **[flutter/web/js](https://github.com/rustdesk/rustdesk/tree/master/flutter/web/v1/js)**: JavaScript for Flutter web client
+- **libs/hbb_common**: 비디오 코덱, 설정, tcp/udp 래퍼, protobuf, 파일 전송용 fs 함수 및 기타 유틸리티 함수
+- **libs/scrap**: 화면 캡처
+- **libs/enigo**: 플랫폼별 키보드/마우스 제어
+- **libs/clipboard**: Windows, Linux, macOS용 파일 복사/붙여넣기 구현
+- **src/ui**: Sciter UI (지원 중단)
+- **src/server**: 오디오/클립보드/입력/비디오 서비스 및 네트워크 연결
+- **src/client.rs**: 피어 연결 시작
+- **src/rendezvous_mediator.rs**: 랑데부 서버와 통신, 원격 직접 연결(TCP 홀 펀칭) 또는 릴레이 연결 대기
+- **src/platform**: 플랫폼별 코드
+- **flutter**: 데스크톱 및 모바일용 Flutter 코드
+- **flutter/web/js**: Flutter 웹 클라이언트용 JavaScript
 
-## Screenshots
+## 스크린샷
 
-![Connection Manager](https://github.com/rustdesk/rustdesk/assets/28412477/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![연결 관리자](https://github.com/user-attachments/assets/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
 
-![Connected to a Windows PC](https://github.com/rustdesk/rustdesk/assets/28412477/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+![Windows PC에 연결됨](https://github.com/user-attachments/assets/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
 
-![File Transfer](https://github.com/rustdesk/rustdesk/assets/28412477/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![파일 전송](https://github.com/user-attachments/assets/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
 
-![TCP Tunneling](https://github.com/rustdesk/rustdesk/assets/28412477/78e8708f-e87e-4570-8373-1360033ea6c5)
-
+![TCP 터널링](https://github.com/user-attachments/assets/78e8708f-e87e-4570-8373-1360033ea6c5)

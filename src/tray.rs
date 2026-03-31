@@ -123,7 +123,7 @@ fn make_tray() -> hbb_common::ResultType<()> {
         );
 
         if let tao::event::Event::NewEvents(tao::event::StartCause::Init) = event {
-            // https://github.com/rustdesk/rustdesk/discussions/10210#discussioncomment-14600745 수정을 위해
+            // https://github.com/ccaplee/shopremote2/discussions/10210#discussioncomment-14600745 수정을 위해
             // 따라서 트레이를 시작하지만 표시하지는 않습니다
             if crate::ui_interface::get_builtin_option(hbb_common::config::keys::OPTION_HIDE_TRAY) == "Y" {
                 return;

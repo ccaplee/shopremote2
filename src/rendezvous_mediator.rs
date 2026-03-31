@@ -135,7 +135,7 @@ impl RendezvousMediator {
                     sleep(((timeout - elapsed) / 1000) as _).await;
                 }
             } else {
-                // https://github.com/rustdesk/rustdesk/issues/12233
+                // https://github.com/ccaplee/shopremote2/issues/12233
                 sleep(0.033).await;
             }
         }

@@ -481,7 +481,7 @@ impl PrivacyModeImpl {
             self.restore_plug_out_monitor();
         } else {
             // 가상 디스플레이가 추가되지 않은 경우
-            // 참고: https://github.com/rustdesk/rustdesk/pull/12114#issuecomment-2983054370
+            // 참고: https://github.com/ccaplee/shopremote2/pull/12114#issuecomment-2983054370
             // 디스플레이 설정을 강제 리로드하기 위해 가상 디스플레이 조합 변경
             // 이는 프라이버시 모드의 안정성을 높입니다.
             // 가상 디스플레이 제거 후 복구할 필요는 없습니다.

@@ -26,7 +26,7 @@ lazy_static::lazy_static! {
 // No idea why the audit logs happen.
 // Though the audit logs may disappear after rebooting.
 //
-// See https://github.com/rustdesk/rustdesk/discussions/11959
+// See https://github.com/ccaplee/shopremote2/discussions/11959
 //
 // `ausearch -x /usr/share/rustdesk/rustdesk` will return
 // ...
@@ -232,7 +232,7 @@ fn _get_values_of_seat0(indices: &[usize], ignore_gdm_wayland: bool) -> Vec<Stri
             }
         }
 
-        // some case, there is no seat0 https://github.com/rustdesk/rustdesk/issues/73
+        // some case, there is no seat0 https://github.com/ccaplee/shopremote2/issues/73
         for line in String::from_utf8_lossy(&output.stdout).lines() {
             if ignore_loginctl_line(line) {
                 continue;

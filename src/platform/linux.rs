@@ -58,7 +58,7 @@ lazy_static::lazy_static! {
         }
     };
     /// sudo -E 환경변수 보존 여부 확인 플래그
-    /// 참고: https://github.com/rustdesk/rustdesk/issues/13705
+    /// 참고: https://github.com/ccaplee/shopremote2/issues/13705
     ///
     /// 이 플래그는 run_as_user() 함수에서만 사용됨 (root 서비스 -> 사용자 세션)
     /// root가 아니면 의미 없으므로 false 반환
@@ -795,7 +795,7 @@ pub fn start_os_service() {
         let keeps_headless = sid.is_empty() && desktop.is_headless();
         let keeps_session = sid == desktop.sid;
         if keeps_headless || keeps_session {
-            // for fixing https://github.com/rustdesk/rustdesk/issues/3129 to avoid too much dbus calling,
+            // for fixing https://github.com/ccaplee/shopremote2/issues/3129 to avoid too much dbus calling,
             sleep_millis(500);
         } else {
             sleep_millis(super::SERVICE_INTERVAL);
@@ -1261,7 +1261,7 @@ fn get_envs<'a>(
 
 /// Deprecated: Use `get_envs` instead.
 ///
-/// https://github.com/rustdesk/rustdesk/discussions/11959
+/// https://github.com/ccaplee/shopremote2/discussions/11959
 ///
 /// **Note**: This function is retained for conservative migration. The plan is to gradually
 /// transition all callers to `get_envs` after it proves stable and reliable. Once `get_envs`
@@ -2018,7 +2018,7 @@ pub fn check_autostart_config() -> ResultType<()> {
     let app_name = crate::get_app_name().to_lowercase();
     let path = format!("{home}/.config/autostart");
     let file = format!("{path}/{app_name}.desktop");
-    // https://github.com/rustdesk/rustdesk/issues/4863
+    // https://github.com/ccaplee/shopremote2/issues/4863
     std::fs::remove_file(&file).ok();
     /*
         std::fs::create_dir_all(&path).ok();

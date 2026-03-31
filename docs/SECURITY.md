@@ -1,9 +1,13 @@
-# Security Policy
+# 보안 정책
 
-## Reporting a Vulnerability
+## 지원 버전
 
-We value security for the project very highly. We encourage all users to report any vulnerabilities they discover to us.
-If you find a security vulnerability in the ShopRemote2 project, please report it responsibly by sending an email to info@rustdesk.com.
+| 버전 | 지원 여부 |
+| --- | --- |
+| 2.0.x | :white_check_mark: |
 
-At this juncture, we don't have a bug bounty program. We are a small team trying to solve a big problem. We urge you to report any vulnerabilities responsibly
-so that we can continue building a secure application for the entire community.
+## 보안 취약점 신고
+
+보안 취약점을 발견하셨다면 ccccap@naver.com 으로 신고해 주세요.
+
+공개적인 이슈 트래커에 보안 취약점을 등록하지 마시고, 이메일로 직접 연락해 주시기 바랍니다.

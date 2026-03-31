@@ -11,7 +11,7 @@ use scrap::Display;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// DBus 호출을 피하기 위한 디스플레이 서비스 구현
-/// 참고: https://github.com/rustdesk/rustdesk/discussions/6042
+/// 참고: https://github.com/ccaplee/shopremote2/discussions/6042
 
 /// 디스플레이 서비스의 이름
 pub const NAME: &'static str = "display";
@@ -42,7 +42,7 @@ lazy_static::lazy_static! {
 }
 
 /// 디스플레이 변경 감지를 임시로 무시하는 플래그
-/// 참고: https://github.com/rustdesk/rustdesk/pull/8537
+/// 참고: https://github.com/ccaplee/shopremote2/pull/8537
 static TEMP_IGNORE_DISPLAYS_CHANGED: AtomicBool = AtomicBool::new(false);
 
 /// 디스플레이 동기화 정보를 관리하는 구조체
@@ -227,7 +227,7 @@ pub fn check_displays_changed() -> ResultType<()> {
     #[cfg(target_os = "linux")]
     {
         // Currently, wayland need to call wayland::clear() before call Display::all(), otherwise it will cause
-        // block, or even crash here, https://github.com/rustdesk/rustdesk/blob/0bb4d43e9ea9d9dfb9c46c8d27d1a97cd0ad6bea/libs/scrap/src/wayland/pipewire.rs#L235
+        // block, or even crash here, https://github.com/ccaplee/shopremote2/blob/0bb4d43e9ea9d9dfb9c46c8d27d1a97cd0ad6bea/libs/scrap/src/wayland/pipewire.rs#L235
         if !is_x11() {
             return Ok(());
         }

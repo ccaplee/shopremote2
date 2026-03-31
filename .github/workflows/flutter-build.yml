@@ -1008,7 +1008,7 @@ jobs:
             ;;
           esac
 
-      - name: Upload Rustdesk library to Artifacts
+      - name: Upload ShopRemote2 library to Artifacts
         uses: actions/upload-artifact@master
         with:
           name: libshopremote2.so.${{ matrix.job.target }}
@@ -1205,25 +1205,25 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      - name: Download Rustdesk library from Artifacts
+      - name: Download ShopRemote2 library from Artifacts
         uses: actions/download-artifact@master
         with:
           name: libshopremote2.so.aarch64-linux-android
           path: ./flutter/android/app/src/main/jniLibs/arm64-v8a
 
-      - name: Download Rustdesk library from Artifacts
+      - name: Download ShopRemote2 library from Artifacts
         uses: actions/download-artifact@master
         with:
           name: libshopremote2.so.armv7-linux-androideabi
           path: ./flutter/android/app/src/main/jniLibs/armeabi-v7a
 
-      - name: Download Rustdesk library from Artifacts
+      - name: Download ShopRemote2 library from Artifacts
         uses: actions/download-artifact@master
         with:
           name: libshopremote2.so.x86_64-linux-android
           path: ./flutter/android/app/src/main/jniLibs/x86_64
 
-      - name: Download Rustdesk library from Artifacts
+      - name: Download ShopRemote2 library from Artifacts
         if: ${{ env.reltype == 'debug' }}
         uses: actions/download-artifact@master
         with:
@@ -2043,7 +2043,7 @@ jobs:
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
-      # https://rustdesk.com/docs/en/dev/build/web/
+      # 웹 빌드 설정
       - name: Build web
         shell: bash
         run: |

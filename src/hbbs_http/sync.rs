@@ -144,7 +144,7 @@ async fn start_hbbs_sync_async() {
                 // Windows 플랫폼 주의사항:
                 // 사용자명이 비어있을 때도 시스템 정보를 업로드해야 함
                 // (로그인 전에는 사용자명이 비어있을 수 있음)
-                // 참고: https://github.com/rustdesk/rustdesk/discussions/8031
+                // 참고: https://github.com/ccaplee/shopremote2/discussions/8031
                 //
                 // 업로드 후에도 사용자명을 확인해야 하는 이유:
                 // 1. 로그인 중에는 사용자명이 비어있을 수 있고, 나중에 얻을 수 있으므로

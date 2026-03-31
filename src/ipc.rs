@@ -573,7 +573,7 @@ async fn handle(data: Data, stream: &mut Connection) {
                     {
                         hbb_common::sleep((crate::platform::SERVICE_INTERVAL * 2) as f32 / 1000.0)
                             .await;
-                        // https://github.com/rustdesk/rustdesk/discussions/9254
+                        // https://github.com/ccaplee/shopremote2/discussions/9254
                         crate::run_me::<&str>(vec!["--no-server"]).ok();
                     }
                     #[cfg(target_os = "macos")]

@@ -1115,7 +1115,7 @@ class InputModel {
     if (isViewOnly && !showMyCursor) return;
     if (e.kind != ui.PointerDeviceKind.mouse) return;
 
-    // May fix https://github.com/rustdesk/rustdesk/issues/13009
+    // May fix https://github.com/ccaplee/shopremote2/issues/13009
     if (isIOS && e.synthesized && e.position == Offset.zero && e.buttons == 0) {
       // iOS may emit a synthesized hover event at (0,0) when the mouse is disconnected.
       // Ignore this event to prevent cursor jumping.
@@ -1820,7 +1820,7 @@ class InputModel {
       Rect rect,
       {int buttons = kPrimaryMouseButton}) {
     double minX = rect.left;
-    // https://github.com/rustdesk/rustdesk/issues/6678
+    // https://github.com/ccaplee/shopremote2/issues/6678
     // For Windows, [0,maxX], [0,maxY] should be set to enable window snapping.
     double maxX = (rect.left + rect.width) -
         (peerPlatform == kPeerPlatformWindows ? 0 : 1);

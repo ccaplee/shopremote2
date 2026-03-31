@@ -190,7 +190,7 @@ pub fn translate_locale(name: String, locale: &str) -> String {
                 if !app_name.contains("ShopRemote2") {
                     s = s.replace("ShopRemote2", &app_name);
                 } else {
-                    // https://github.com/rustdesk/rustdesk-server-pro/issues/845
+                    // https://github.com/ccaplee/shopremote2-server/issues/845
                     // If app_name contains "ShopRemote2" (e.g., "ShopRemote2-Admin"), we need to avoid
                     // replacing "ShopRemote2" within the already-substituted app_name, which would
                     // cause duplication like "ShopRemote2-Admin" -> "ShopRemote2-Admin-Admin".

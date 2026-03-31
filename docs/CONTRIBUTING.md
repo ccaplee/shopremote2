@@ -1,46 +1,23 @@
-# Contributing to ShopRemote2
+# ShopRemote2 기여 가이드
 
-ShopRemote2 welcomes contribution from everyone. Here are the guidelines if you are
-thinking of helping us:
+ShopRemote2에 기여해 주셔서 감사합니다!
 
-## Contributions
+## 기여 방법
 
-Contributions to ShopRemote2 or its dependencies should be made in the form of GitHub
-pull requests. Each pull request will be reviewed by a core contributor
-(someone with permission to land patches) and either landed in the main tree or
-given feedback for changes that would be required. All contributions should
-follow this format, even those from core contributors.
+1. 이 저장소를 포크합니다
+2. 기능 브랜치를 생성합니다 (`git checkout -b feature/새기능`)
+3. 변경사항을 커밋합니다 (`git commit -m '새기능 추가'`)
+4. 브랜치에 푸시합니다 (`git push origin feature/새기능`)
+5. Pull Request를 생성합니다
 
-Should you wish to work on an issue, please claim it first by commenting on
-the GitHub issue that you want to work on it. This is to prevent duplicated
-efforts from contributors on the same issue.
+## 개발 환경 설정
 
-## Pull Request Checklist
+- Rust 개발 환경
+- Flutter SDK 3.22.3
+- C++ 빌드 도구
 
-- Branch from the master branch and, if needed, rebase to the current master
-  branch before submitting your pull request. If it doesn't merge cleanly with
-  master you may be asked to rebase your changes.
+자세한 빌드 방법은 [README](../README.md)를 참고하세요.
 
-- Commits should be as small as possible, while ensuring that each commit is
-  correct independently (i.e., each commit should compile and pass tests).
+## 문의
 
-- Commits should be accompanied by a Developer Certificate of Origin
-  (http://developercertificate.org) sign-off, which indicates that you (and
-  your employer if applicable) agree to be bound by the terms of the
-  [project license](../LICENCE). In git, this is the `-s` option to `git commit`
-
-- If your patch is not getting reviewed or you need a specific person to review
-  it, you can @-reply a reviewer asking for a review in the pull request or a
-  comment, or you can ask for a review via [email](mailto:info@rustdesk.com).
-
-- Add tests relevant to the fixed bug or new feature.
-
-For specific git instructions, see [GitHub workflow 101](https://github.com/servo/servo/wiki/GitHub-workflow).
-
-## Conduct
-
-https://github.com/rustdesk/rustdesk/blob/master/docs/CODE_OF_CONDUCT.md
-
-## Communication
-
-ShopRemote2 contributors frequent the [Discord](https://discord.gg/nDceKgxnkV).
+문의사항이 있으시면 ccccap@naver.com 으로 연락해 주세요.
