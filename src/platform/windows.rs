@@ -2160,7 +2160,7 @@ pub fn create_shortcut(id: &str) -> ResultType<()> {
     let exe = std::env::current_exe()?.to_str().unwrap_or("").to_owned();
     // https://github.com/ccaplee/shopremote2/issues/13735
     // Replace ':' with '_' for filename since ':' is not allowed in Windows filenames
-    // https://github.com/rustdesk/hbb_common/blob/8b0e25867375ba9e6bff548acf44fe6d6ffa7c0e/src/config.rs#L1384
+    // https://github.com/ccaplee/shopremote2/blob/8b0e25867375ba9e6bff548acf44fe6d6ffa7c0e/src/config.rs#L1384
     let filename = id.replace(':', "_");
     let shortcut_icon_location = get_shortcut_icon_location(&exe);
     let shortcut = write_cmds(

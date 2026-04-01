@@ -948,7 +948,7 @@ pub fn is_locked() -> bool {
     let values = get_values_of_seat0(&[0]);
     // Though the values can't be empty, we still add check here for safety.
     // Because we cannot guarantee whether the internal implementation will change in the future.
-    // https://github.com/rustdesk/hbb_common/blob/ebb4d4a48cf7ed6ca62e93f8ed124065c6408536/src/platform/linux.rs#L119
+    // https://github.com/ccaplee/shopremote2/blob/ebb4d4a48cf7ed6ca62e93f8ed124065c6408536/src/platform/linux.rs#L119
     if values.is_empty() {
         log::debug!("Failed to check is locked, values vector is empty.");
         return false;
