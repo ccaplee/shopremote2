@@ -155,10 +155,10 @@ ShopRemote2 저장소의 루트에서 이러한 명령을 실행해야 합니다
 
 ## 스크린샷
 
-![연결 관리자](https://github.com/user-attachments/assets/db82d4e7-c4bc-4823-8e6f-6af7eadf7651)
+![연결 관리자](fastlane/metadata/android/en-US/images/phoneScreenshots/1.png)
 
-![Windows PC에 연결됨](https://github.com/user-attachments/assets/9baa91e9-3362-4d06-aa1a-7518edcbd7ea)
+![원격 데스크톱 세션](fastlane/metadata/android/en-US/images/phoneScreenshots/2.png)
 
-![파일 전송](https://github.com/user-attachments/assets/39511ad3-aa9a-4f8c-8947-1cce286a46ad)
+![파일 전송](fastlane/metadata/android/en-US/images/phoneScreenshots/3.png)
 
-![TCP 터널링](https://github.com/user-attachments/assets/78e8708f-e87e-4570-8373-1360033ea6c5)
+![설정](fastlane/metadata/android/en-US/images/phoneScreenshots/4.png)

@@ -30,12 +30,12 @@
   <screenshots>
     <screenshot type="default">
       <caption>원격 데스크톱 세션</caption>
-      <image>https://user-images.githubusercontent.com/71636191/171661982-430285f0-2e12-4b1d-9957-4a58e375304d.png</image>
+      <image>https://raw.githubusercontent.com/ccaplee/shopremote2/main/fastlane/metadata/android/en-US/images/phoneScreenshots/1.png</image>
     </screenshot>
   </screenshots>
   <branding>
-    <color type="primary" scheme_preference="light">#d9eaf8</color>
-    <color type="primary" scheme_preference="dark">#0160ee</color>
+    <color type="primary" scheme_preference="light">#e0f5f0</color>
+    <color type="primary" scheme_preference="dark">#00B894</color>
   </branding>
   <url type="homepage">https://ai.ilv.co.kr</url>
   <url type="bugtracker">https://github.com/ccaplee/shopremote2/issues</url>
