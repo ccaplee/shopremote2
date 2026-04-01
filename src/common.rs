@@ -1765,9 +1765,7 @@ pub fn create_symmetric_key_msg(their_pk_b: [u8; 32]) -> (Bytes, Bytes, secretbo
 
 #[inline]
 pub fn using_public_server() -> bool {
-    // ShopRemote2는 자체 서버(ai.ilv.co.kr)를 기본으로 사용하므로
-    // 공용 서버 안내 메시지를 표시하지 않음
-    false
+    crate::get_custom_rendezvous_server(get_option("custom-rendezvous-server")).is_empty()
 }
 
 pub struct ThrottledInterval {
