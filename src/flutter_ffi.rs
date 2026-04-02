@@ -2,8 +2,9 @@
 use crate::keyboard::input_source::{change_input_source, get_cur_session_input_source};
 #[cfg(target_os = "linux")]
 use crate::platform::linux::is_x11;
+#[cfg(not(feature = "host-only"))]
+use crate::client::file_trait::FileManager;
 use crate::{
-    client::file_trait::FileManager,
     common::{make_fd_to_json, make_vec_fd_to_json},
     flutter::{
         self, session_add, session_add_existed, session_start_, sessions, try_sync_peer_option,
@@ -104,6 +105,7 @@ pub fn host_stop_system_key_propagate(_stopped: bool) {
 }
 
 // This function is only used to count the number of control sessions.
+#[cfg(not(feature = "host-only"))]
 pub fn peer_get_sessions_count(id: String, conn_type: i32) -> SyncReturn<usize> {
     let conn_type = if conn_type == ConnType::VIEW_CAMERA as i32 {
         ConnType::VIEW_CAMERA
@@ -121,6 +123,7 @@ pub fn peer_get_sessions_count(id: String, conn_type: i32) -> SyncReturn<usize> 
     SyncReturn(sessions::get_session_count(id, conn_type))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_add_existed_sync(
     id: String,
     session_id: SessionID,
@@ -134,6 +137,7 @@ pub fn session_add_existed_sync(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_add_sync(
     session_id: SessionID,
     id: String,
@@ -175,6 +179,7 @@ pub fn session_add_sync(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_start(
     events2ui: StreamSink<EventToUI>,
     session_id: SessionID,
@@ -183,6 +188,7 @@ pub fn session_start(
     session_start_(&session_id, &id, events2ui)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_start_with_displays(
     events2ui: StreamSink<EventToUI>,
     session_id: SessionID,
@@ -200,6 +206,7 @@ pub fn session_start_with_displays(
     Ok(())
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_remember(session_id: SessionID) -> Option<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_remember())
@@ -208,6 +215,7 @@ pub fn session_get_remember(session_id: SessionID) -> Option<bool> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_toggle_option(session_id: SessionID, arg: String) -> Option<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_toggle_option(arg))
@@ -216,11 +224,13 @@ pub fn session_get_toggle_option(session_id: SessionID, arg: String) -> Option<b
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_toggle_option_sync(session_id: SessionID, arg: String) -> SyncReturn<bool> {
     let res = session_get_toggle_option(session_id, arg) == Some(true);
     SyncReturn(res)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_option(session_id: SessionID, arg: String) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_option(arg))
@@ -229,6 +239,7 @@ pub fn session_get_option(session_id: SessionID, arg: String) -> Option<String> 
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_login(
     session_id: SessionID,
     os_username: String,
@@ -241,12 +252,14 @@ pub fn session_login(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send2fa(session_id: SessionID, code: String, trust_this_device: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send2fa(code, trust_this_device);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_enable_trusted_devices(session_id: SessionID) -> SyncReturn<bool> {
     let v = if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.get_enable_trusted_devices()
@@ -260,6 +273,7 @@ pub fn will_session_close_close_session(session_id: SessionID) -> SyncReturn<boo
     SyncReturn(sessions::would_remove_peer_by_session_id(&session_id))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_close(session_id: SessionID) {
     if let Some(session) = sessions::remove_session_by_session_id(&session_id) {
         // `release_remote_keys` is not required for mobile platforms in common cases.
@@ -271,18 +285,21 @@ pub fn session_close(session_id: SessionID) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_refresh(session_id: SessionID, display: usize) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.refresh_video(display as _);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_take_screenshot(session_id: SessionID, display: usize) {
     if let Some(s) = sessions::get_session_by_session_id(&session_id) {
         s.take_screenshot(display as _, session_id.to_string());
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_handle_screenshot(
     #[allow(unused_variables)] session_id: SessionID,
     action: String,
@@ -290,6 +307,7 @@ pub fn session_handle_screenshot(
     crate::client::screenshot::handle_screenshot(action)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_is_multi_ui_session(session_id: SessionID) -> SyncReturn<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.is_multi_ui_session())
@@ -298,12 +316,14 @@ pub fn session_is_multi_ui_session(session_id: SessionID) -> SyncReturn<bool> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_record_screen(session_id: SessionID, start: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.record_screen(start);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_is_recording(session_id: SessionID) -> SyncReturn<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.is_recording())
@@ -312,6 +332,7 @@ pub fn session_get_is_recording(session_id: SessionID) -> SyncReturn<bool> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_reconnect(session_id: SessionID, force_relay: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.reconnect(force_relay);
@@ -319,6 +340,7 @@ pub fn session_reconnect(session_id: SessionID, force_relay: bool) {
     session_on_waiting_for_image_dialog_show(session_id);
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_toggle_option(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         log::warn!("toggle option {}", &value);
@@ -337,12 +359,14 @@ pub fn session_toggle_option(session_id: SessionID, value: String) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_toggle_privacy_mode(session_id: SessionID, impl_key: String, on: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.toggle_privacy_mode(impl_key, on);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_flutter_option(session_id: SessionID, k: String) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_flutter_option(k))
@@ -351,6 +375,7 @@ pub fn session_get_flutter_option(session_id: SessionID, k: String) -> Option<St
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_flutter_option(session_id: SessionID, k: String, v: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_flutter_option(k, v);
@@ -378,6 +403,7 @@ pub fn set_local_kb_layout_type(kb_layout_type: String) {
     ui_interface::set_kb_layout_type(kb_layout_type)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_view_style(session_id: SessionID) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_view_style())
@@ -386,12 +412,14 @@ pub fn session_get_view_style(session_id: SessionID) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_view_style(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_view_style(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_scroll_style(session_id: SessionID) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_scroll_style())
@@ -400,12 +428,14 @@ pub fn session_get_scroll_style(session_id: SessionID) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_scroll_style(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_scroll_style(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_edge_scroll_edge_thickness(session_id: SessionID) -> Option<i32> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_edge_scroll_edge_thickness())
@@ -414,12 +444,14 @@ pub fn session_get_edge_scroll_edge_thickness(session_id: SessionID) -> Option<i
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_edge_scroll_edge_thickness(session_id: SessionID, value: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_edge_scroll_edge_thickness(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_image_quality(session_id: SessionID) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_image_quality())
@@ -428,12 +460,14 @@ pub fn session_get_image_quality(session_id: SessionID) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_image_quality(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_image_quality(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_keyboard_mode(session_id: SessionID) -> Option<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_keyboard_mode())
@@ -442,6 +476,7 @@ pub fn session_get_keyboard_mode(session_id: SessionID) -> Option<String> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_keyboard_mode(session_id: SessionID, value: String) {
     let mut _mode_updated = false;
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
@@ -455,6 +490,7 @@ pub fn session_set_keyboard_mode(session_id: SessionID, value: String) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_reverse_mouse_wheel_sync(session_id: SessionID) -> SyncReturn<Option<String>> {
     let res = if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_reverse_mouse_wheel())
@@ -464,12 +500,14 @@ pub fn session_get_reverse_mouse_wheel_sync(session_id: SessionID) -> SyncReturn
     SyncReturn(res)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_reverse_mouse_wheel(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_reverse_mouse_wheel(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_displays_as_individual_windows(
     session_id: SessionID,
 ) -> SyncReturn<Option<String>> {
@@ -480,12 +518,14 @@ pub fn session_get_displays_as_individual_windows(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_displays_as_individual_windows(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_displays_as_individual_windows(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_use_all_my_displays_for_the_remote_session(
     session_id: SessionID,
 ) -> SyncReturn<Option<String>> {
@@ -498,6 +538,7 @@ pub fn session_get_use_all_my_displays_for_the_remote_session(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_use_all_my_displays_for_the_remote_session(
     session_id: SessionID,
     value: String,
@@ -507,6 +548,7 @@ pub fn session_set_use_all_my_displays_for_the_remote_session(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_custom_image_quality(session_id: SessionID) -> Option<Vec<i32>> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_custom_image_quality())
@@ -515,6 +557,7 @@ pub fn session_get_custom_image_quality(session_id: SessionID) -> Option<Vec<i32
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_is_keyboard_mode_supported(session_id: SessionID, mode: String) -> SyncReturn<bool> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.is_keyboard_mode_supported(mode))
@@ -523,18 +566,21 @@ pub fn session_is_keyboard_mode_supported(session_id: SessionID, mode: String) -
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_custom_image_quality(session_id: SessionID, value: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_custom_image_quality(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_custom_fps(session_id: SessionID, fps: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.set_custom_fps(fps);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_trackpad_speed(session_id: SessionID) -> Option<i32> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         Some(session.get_trackpad_speed())
@@ -543,28 +589,33 @@ pub fn session_get_trackpad_speed(session_id: SessionID) -> Option<i32> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_trackpad_speed(session_id: SessionID, value: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.save_trackpad_speed(value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_lock_screen(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.lock_screen();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_ctrl_alt_del(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.ctrl_alt_del();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_switch_display(is_desktop: bool, session_id: SessionID, value: Vec<i32>) {
     sessions::session_switch_display(is_desktop, session_id, value);
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_handle_flutter_key_event(
     session_id: SessionID,
     character: String,
@@ -584,6 +635,7 @@ pub fn session_handle_flutter_key_event(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_handle_flutter_raw_key_event(
     session_id: SessionID,
     name: String,
@@ -611,6 +663,7 @@ pub fn session_handle_flutter_raw_key_event(
 // session_enter_or_leave() will be called then.
 // As rust is multi-thread, it is possible that enter() is called before leave().
 // This will cause the keyboard input to take no effect.
+#[cfg(not(feature = "host-only"))]
 pub fn session_enter_or_leave(_session_id: SessionID, _enter: bool) -> SyncReturn<()> {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if let Some(session) = sessions::get_session_by_session_id(&_session_id) {
@@ -625,6 +678,7 @@ pub fn session_enter_or_leave(_session_id: SessionID, _enter: bool) -> SyncRetur
     SyncReturn(())
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_input_key(
     session_id: SessionID,
     name: String,
@@ -641,6 +695,7 @@ pub fn session_input_key(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_input_string(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         // #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -649,6 +704,7 @@ pub fn session_input_string(session_id: SessionID, value: String) {
 }
 
 // chat_client_mode
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_chat(session_id: SessionID, text: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send_chat(text);
@@ -656,6 +712,7 @@ pub fn session_send_chat(session_id: SessionID, text: String) {
 }
 
 // Terminal functions
+#[cfg(not(feature = "host-only"))]
 pub fn session_open_terminal(session_id: SessionID, terminal_id: i32, rows: u32, cols: u32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.open_terminal(terminal_id, rows, cols);
@@ -667,30 +724,35 @@ pub fn session_open_terminal(session_id: SessionID, terminal_id: i32, rows: u32,
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_terminal_input(session_id: SessionID, terminal_id: i32, data: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send_terminal_input(terminal_id, data);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_resize_terminal(session_id: SessionID, terminal_id: i32, rows: u32, cols: u32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.resize_terminal(terminal_id, rows, cols);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_close_terminal(session_id: SessionID, terminal_id: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.close_terminal(terminal_id);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_peer_option(session_id: SessionID, name: String, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.set_option(name, value);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_peer_option(session_id: SessionID, name: String) -> String {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         return session.get_option(name);
@@ -698,6 +760,7 @@ pub fn session_get_peer_option(session_id: SessionID, name: String) -> String {
     "".to_string()
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_input_os_password(session_id: SessionID, value: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.input_os_password(value, true);
@@ -705,12 +768,14 @@ pub fn session_input_os_password(session_id: SessionID, value: String) {
 }
 
 // File Action
+#[cfg(not(feature = "host-only"))]
 pub fn session_read_remote_dir(session_id: SessionID, path: String, include_hidden: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.read_remote_dir(path, include_hidden);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_files(
     session_id: SessionID,
     act_id: i32,
@@ -734,6 +799,7 @@ pub fn session_send_files(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_confirm_override_file(
     session_id: SessionID,
     act_id: i32,
@@ -747,6 +813,7 @@ pub fn session_set_confirm_override_file(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_remove_file(
     session_id: SessionID,
     act_id: i32,
@@ -759,6 +826,7 @@ pub fn session_remove_file(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_read_dir_to_remove_recursive(
     session_id: SessionID,
     act_id: i32,
@@ -771,6 +839,7 @@ pub fn session_read_dir_to_remove_recursive(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_remove_all_empty_dirs(
     session_id: SessionID,
     act_id: i32,
@@ -782,18 +851,21 @@ pub fn session_remove_all_empty_dirs(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_cancel_job(session_id: SessionID, act_id: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.cancel_job(act_id);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_create_dir(session_id: SessionID, act_id: i32, path: String, is_remote: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.create_dir(act_id, path, is_remote);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_read_local_dir_sync(
     _session_id: SessionID,
     path: String,
@@ -805,6 +877,7 @@ pub fn session_read_local_dir_sync(
     "".to_string()
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_read_local_empty_dirs_recursive_sync(
     _session_id: SessionID,
     path: String,
@@ -816,6 +889,7 @@ pub fn session_read_local_empty_dirs_recursive_sync(
     "".to_string()
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_read_remote_empty_dirs_recursive_sync(
     session_id: SessionID,
     path: String,
@@ -826,6 +900,7 @@ pub fn session_read_remote_empty_dirs_recursive_sync(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_platform(session_id: SessionID, is_remote: bool) -> String {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         return session.get_platform(is_remote);
@@ -833,6 +908,7 @@ pub fn session_get_platform(session_id: SessionID, is_remote: bool) -> String {
     "".to_string()
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_load_last_transfer_jobs(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         return session.load_last_jobs();
@@ -845,6 +921,7 @@ pub fn session_load_last_transfer_jobs(session_id: SessionID) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_add_job(
     session_id: SessionID,
     act_id: i32,
@@ -867,12 +944,14 @@ pub fn session_add_job(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_resume_job(session_id: SessionID, act_id: i32, is_remote: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.resume_job(act_id, is_remote);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_rename_file(
     session_id: SessionID,
     act_id: i32,
@@ -885,34 +964,40 @@ pub fn session_rename_file(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_elevate_direct(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.elevate_direct();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_elevate_with_logon(session_id: SessionID, username: String, password: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.elevate_with_logon(username, password);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_switch_sides(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.switch_sides();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_change_resolution(session_id: SessionID, display: i32, width: i32, height: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.change_resolution(display, width, height);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_size(session_id: SessionID, display: usize, width: usize, height: usize) {
     super::flutter::session_set_size(session_id, display, width, height)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_selected_session_id(session_id: SessionID, sid: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send_selected_session_id(sid);
@@ -1599,6 +1684,7 @@ pub fn main_get_displays() -> SyncReturn<String> {
     SyncReturn(display_info)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_add_port_forward(
     session_id: SessionID,
     local_port: i32,
@@ -1610,30 +1696,35 @@ pub fn session_add_port_forward(
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_remove_port_forward(session_id: SessionID, local_port: i32) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.remove_port_forward(local_port);
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_new_rdp(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.new_rdp();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_request_voice_call(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.request_voice_call();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_close_voice_call(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.close_voice_call();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_conn_token(session_id: SessionID) -> SyncReturn<Option<String>> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.get_conn_token())
@@ -1808,6 +1899,7 @@ pub fn main_load_group() -> String {
     serde_json::to_string(&config::Group::load()).unwrap_or_default()
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_pointer(session_id: SessionID, msg: String) {
     super::flutter::session_send_pointer(session_id, msg);
 }
@@ -1840,6 +1932,7 @@ pub fn session_send_pointer(session_id: SessionID, msg: String) {
 ///
 /// If these assumptions are violated (e.g., `relative_mouse_mode` is added to normal events),
 /// legitimate mouse events may be silently dropped by the early-return logic below.
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_mouse(session_id: SessionID, msg: String) {
     if let Ok(m) = serde_json::from_str::<HashMap<String, String>>(&msg) {
         // Relative mouse mode marker validation (Flutter-only).
@@ -1944,12 +2037,14 @@ pub fn session_send_mouse(session_id: SessionID, msg: String) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_restart_remote_device(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.restart_remote_device();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_audit_server_sync(session_id: SessionID, typ: String) -> SyncReturn<String> {
     let res = if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.get_audit_server(typ)
@@ -1959,12 +2054,14 @@ pub fn session_get_audit_server_sync(session_id: SessionID, typ: String) -> Sync
     SyncReturn(res)
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_send_note(session_id: SessionID, note: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send_note(note)
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_last_audit_note(session_id: SessionID) -> SyncReturn<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.last_audit_note.lock().unwrap().clone())
@@ -1973,12 +2070,14 @@ pub fn session_get_last_audit_note(session_id: SessionID) -> SyncReturn<String> 
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_set_audit_guid(session_id: SessionID, guid: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         *session.audit_guid.lock().unwrap() = guid;
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_audit_guid(session_id: SessionID) -> SyncReturn<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.audit_guid.lock().unwrap().clone())
@@ -1987,6 +2086,7 @@ pub fn session_get_audit_guid(session_id: SessionID) -> SyncReturn<String> {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_conn_session_id(session_id: SessionID) -> SyncReturn<String> {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         SyncReturn(session.lc.read().unwrap().session_id.to_string())
@@ -1995,6 +2095,7 @@ pub fn session_get_conn_session_id(session_id: SessionID) -> SyncReturn<String> 
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_alternative_codecs(session_id: SessionID) -> String {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         let (vp8, av1, h264, h265) = session.alternative_codecs();
@@ -2005,16 +2106,19 @@ pub fn session_alternative_codecs(session_id: SessionID) -> String {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_change_prefer_codec(session_id: SessionID) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.update_supported_decodings();
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_on_waiting_for_image_dialog_show(session_id: SessionID) {
     super::flutter::session_on_waiting_for_image_dialog_show(session_id);
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_toggle_virtual_display(session_id: SessionID, index: i32, on: bool) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.toggle_virtual_display(index, on);
@@ -2022,6 +2126,7 @@ pub fn session_toggle_virtual_display(session_id: SessionID, index: i32, on: boo
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_printer_response(
     session_id: SessionID,
     id: i32,
@@ -2192,14 +2297,17 @@ pub fn translate(name: String, locale: String) -> SyncReturn<String> {
     SyncReturn(crate::client::translate_locale(name, &locale))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_rgba_size(session_id: SessionID, display: usize) -> SyncReturn<usize> {
     SyncReturn(super::flutter::session_get_rgba_size(session_id, display))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_next_rgba(session_id: SessionID, display: usize) -> SyncReturn<()> {
     SyncReturn(super::flutter::session_next_rgba(session_id, display))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_register_pixelbuffer_texture(
     session_id: SessionID,
     display: usize,
@@ -2210,6 +2318,7 @@ pub fn session_register_pixelbuffer_texture(
     ))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_register_gpu_texture(
     session_id: SessionID,
     display: usize,
@@ -2712,6 +2821,7 @@ pub fn main_max_encrypt_len() -> SyncReturn<usize> {
     SyncReturn(max_encrypt_len())
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_request_new_display_init_msgs(session_id: SessionID, display: usize) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.request_init_msgs(display);
@@ -2944,6 +3054,7 @@ pub fn main_set_common(_key: String, _value: String) {
     }
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_common_sync(
     session_id: SessionID,
     key: String,
@@ -2952,6 +3063,7 @@ pub fn session_get_common_sync(
     SyncReturn(session_get_common(session_id, key, param))
 }
 
+#[cfg(not(feature = "host-only"))]
 pub fn session_get_common(
     session_id: SessionID,
     key: String,

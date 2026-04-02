@@ -15,6 +15,7 @@ mod server;
 #[cfg(not(any(target_os = "ios")))]
 pub use self::server::*;
 // 원격 접속 클라이언트 기능 모듈
+#[cfg(not(feature = "host-only"))]
 mod client;
 // 로컬 네트워크(LAN) 발견 모듈
 mod lan;
@@ -66,6 +67,7 @@ mod custom_server;
 // 다국어 지원(локализация) 모듈
 mod lang;
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(not(feature = "host-only"))]
 // 포트 포워딩 기능 모듈
 mod port_forward;
 
@@ -79,6 +81,7 @@ pub mod plugin;
 mod tray;
 
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
+#[cfg(not(feature = "host-only"))]
 // 화이트보드 기능 모듈
 mod whiteboard;
 
@@ -90,7 +93,8 @@ mod updater;
 mod ui_cm_interface;
 // 메인 UI 인터페이스
 mod ui_interface;
-// 세션 UI 인터페이스
+// 세션 UI 인터페이스 (클라이언트 전용)
+#[cfg(not(feature = "host-only"))]
 mod ui_session_interface;
 
 // HTTP 기반 hbbs(자체 호스팅 서버) 통신 모듈
@@ -109,3 +113,8 @@ pub mod virtual_display_manager;
 
 // KCP 프로토콜 기반 스트림 모듈
 mod kcp_stream;
+
+/// Returns true if this build is compiled with the host-only feature flag
+pub fn is_host_only_build() -> bool {
+    cfg!(feature = "host-only")
+}

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shopremote2/common.dart';
 import 'package:shopremote2/consts.dart';
 import 'package:shopremote2/desktop/pages/desktop_home_page.dart';
+import 'package:shopremote2/desktop/pages/desktop_home_page_host.dart';
 import 'package:shopremote2/desktop/pages/desktop_setting_page.dart';
 import 'package:shopremote2/desktop/widgets/tabbar_widget.dart';
 import 'package:shopremote2/models/platform_model.dart';
@@ -43,16 +44,21 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
   _DesktopTabPageState() {
     RemoteCountState.init();
     Get.put<DesktopTabController>(tabController);
+
+    // Use host-only home page when in host-only mode
+    final homePageWidget = isHostOnly
+        ? DesktopHomePageHost(key: const ValueKey(kTabLabelHomePage))
+        : DesktopHomePage(key: const ValueKey(kTabLabelHomePage));
+
     tabController.add(TabInfo(
         key: kTabLabelHomePage,
         label: kTabLabelHomePage,
         selectedIcon: Icons.home_sharp,
         unselectedIcon: Icons.home_outlined,
         closable: false,
-        page: DesktopHomePage(
-          key: const ValueKey(kTabLabelHomePage),
-        )));
-    if (bind.isIncomingOnly()) {
+        page: homePageWidget));
+
+    if (isHostOnly || bind.isIncomingOnly()) {
       tabController.onSelected = (key) {
         if (key == kTabLabelHomePage) {
           windowManager.setSize(getIncomingOnlyHomeSize());
@@ -97,7 +103,8 @@ class _DesktopTabPageState extends State<DesktopTabPage> {
             body: DesktopTab(
               controller: tabController,
               tail: Offstage(
-                offstage: bind.isIncomingOnly() || bind.isDisableSettings(),
+                // Hide settings button in host-only mode or incoming-only mode
+                offstage: isHostOnly || bind.isIncomingOnly() || bind.isDisableSettings(),
                 child: ActionIcon(
                   message: 'Settings',
                   icon: IconFont.menu,

@@ -1,4 +1,5 @@
 #[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(not(feature = "host-only"))]
 use crate::client::translate;
 #[cfg(not(debug_assertions))]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -32,6 +33,7 @@ pub fn core_main() -> Option<Vec<String>> {
     if !crate::common::global_init() {
         return None;
     }
+    #[cfg(not(feature = "host-only"))]
     crate::load_custom_client();
     #[cfg(windows)]
     if !crate::platform::windows::bootstrap() {
@@ -52,6 +54,7 @@ pub fn core_main() -> Option<Vec<String>> {
             arg_exe = arg;
         } else if i > 0 {
             #[cfg(feature = "flutter")]
+            #[cfg(not(feature = "host-only"))]
             if [
                 "--connect",
                 "--play",
@@ -112,10 +115,12 @@ pub fn core_main() -> Option<Vec<String>> {
         }
     }
     #[cfg(windows)]
+    #[cfg(not(feature = "host-only"))]
     if args.contains(&"--connect".to_string()) || args.contains(&"--view-camera".to_string()) {
         hbb_common::platform::windows::start_cpu_performance_monitor();
     }
     #[cfg(feature = "flutter")]
+    #[cfg(not(feature = "host-only"))]
     if _is_flutter_invoke_new_connection {
         return core_main_invoke_new_connection(std::env::args());
     }
@@ -736,6 +741,7 @@ fn import_config(path: &str) {
 /// If it returns [`None`], then the process will terminate, and flutter gui will not be started.
 /// If it returns [`Some`], then the process will continue, and flutter gui will be started.
 #[cfg(feature = "flutter")]
+#[cfg(not(feature = "host-only"))]
 fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<String>> {
     let mut authority = None;
     let mut id = None;

@@ -130,6 +130,11 @@ def make_parser():
         help='Build with unix file copy paste feature'
     )
     parser.add_argument(
+        '--host-only',
+        action='store_true',
+        help='Build host-only variant with separate binary name and Flutter entrypoint'
+    )
+    parser.add_argument(
         '--skip-cargo',
         action='store_true',
         help='Skip cargo build process, only flutter version + Linux supported currently'
@@ -281,6 +286,8 @@ def get_features(args):
         features.append('flutter')
     if args.unix_file_copy_paste:
         features.append('unix-file-copy-paste')
+    if args.host_only:
+        features.append('host-only')
     if osx:
         if args.screencapturekit:
             features.append('screencapturekit')
@@ -315,12 +322,14 @@ def ffi_bindgen_function_refactor():
         'sed -i "s/ffi.NativeFunction<ffi.Bool Function(DartPort/ffi.NativeFunction<ffi.Uint8 Function(DartPort/g" flutter/lib/generated_bridge.dart')
 
 
-def build_flutter_deb(version, features):
+def build_flutter_deb(version, features, host_only=False):
     if not skip_cargo:
         system2(f'cargo build --features {features} --lib --release')
         ffi_bindgen_function_refactor()
     os.chdir('flutter')
-    system2('flutter build linux --release')
+    dart_entrypoint = 'lib/main_host.dart' if host_only else ''
+    entrypoint_arg = f'--dart-entrypoint {dart_entrypoint}' if host_only else ''
+    system2(f'flutter build linux --release {entrypoint_arg}')
     system2('mkdir -p tmpdeb/usr/bin/')
     system2('mkdir -p tmpdeb/usr/share/shopremote2')
     system2('mkdir -p tmpdeb/etc/shopremote2/')
@@ -360,7 +369,8 @@ def build_flutter_deb(version, features):
 
     system2('/bin/rm -rf tmpdeb/')
     system2('/bin/rm -rf ../res/DEBIAN/control')
-    os.rename('shopremote2.deb', '../shopremote2-%s.deb' % version)
+    output_name = f'shopremote2-host-%s.deb' % version if host_only else 'shopremote2-%s.deb' % version
+    os.rename('shopremote2.deb', f'../{output_name}')
     os.chdir("..")
 
 
@@ -401,7 +411,7 @@ def build_deb_from_folder(version, binary_folder):
     os.chdir("..")
 
 
-def build_flutter_dmg(version, features):
+def build_flutter_dmg(version, features, host_only=False):
     if not skip_cargo:
         # set minimum osx build target, now is 10.14, which is the same as the flutter xcode project
         system2(
@@ -410,7 +420,9 @@ def build_flutter_dmg(version, features):
     system2(
         "cp target/release/liblibshopremote2.dylib target/release/libshopremote2.dylib")
     os.chdir('flutter')
-    system2('flutter build macos --release')
+    dart_entrypoint = 'lib/main_host.dart' if host_only else ''
+    entrypoint_arg = f'--dart-entrypoint {dart_entrypoint}' if host_only else ''
+    system2(f'flutter build macos --release {entrypoint_arg}')
     system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/ShopRemote2.app/Contents/MacOS/')
     '''
     system2(
@@ -420,25 +432,29 @@ def build_flutter_dmg(version, features):
     os.chdir("..")
 
 
-def build_flutter_arch_manjaro(version, features):
+def build_flutter_arch_manjaro(version, features, host_only=False):
     if not skip_cargo:
         system2(f'cargo build --features {features} --lib --release')
     ffi_bindgen_function_refactor()
     os.chdir('flutter')
-    system2('flutter build linux --release')
+    dart_entrypoint = 'lib/main_host.dart' if host_only else ''
+    entrypoint_arg = f'--dart-entrypoint {dart_entrypoint}' if host_only else ''
+    system2(f'flutter build linux --release {entrypoint_arg}')
     system2(f'strip {flutter_build_dir}/lib/libshopremote2.so')
     os.chdir('../res')
     system2('HBB=`pwd`/.. FLUTTER=1 makepkg -f')
 
 
-def build_flutter_windows(version, features, skip_portable_pack):
+def build_flutter_windows(version, features, skip_portable_pack, host_only=False):
     if not skip_cargo:
         system2(f'cargo build --features {features} --lib --release')
         if not os.path.exists("target/release/libshopremote2.dll"):
             print("cargo build failed, please check rust source code.")
             exit(-1)
     os.chdir('flutter')
-    system2('flutter build windows --release')
+    dart_entrypoint = 'lib/main_host.dart' if host_only else ''
+    entrypoint_arg = f'--dart-entrypoint {dart_entrypoint}' if host_only else ''
+    system2(f'flutter build windows --release {entrypoint_arg}')
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
@@ -446,8 +462,9 @@ def build_flutter_windows(version, features, skip_portable_pack):
         return
     os.chdir('libs/portable')
     system2('pip3 install -r requirements.txt')
+    binary_name = 'shopremote2-host.exe' if host_only else 'shopremote2.exe'
     system2(
-        f'python3 ./generate.py -f ../../{flutter_build_dir_2} -o . -e ../../{flutter_build_dir_2}/shopremote2.exe')
+        f'python3 ./generate.py -f ../../{flutter_build_dir_2} -o . -e ../../{flutter_build_dir_2}/{binary_name}')
     os.chdir('../..')
     if os.path.exists('./shopremote2_portable.exe'):
         os.replace('./target/release/shopremote2-portable-packer.exe',
@@ -455,11 +472,12 @@ def build_flutter_windows(version, features, skip_portable_pack):
     else:
         os.rename('./target/release/shopremote2-portable-packer.exe',
                   './shopremote2_portable.exe')
+    output_name = f'shopremote2-host-{version}-install.exe' if host_only else f'shopremote2-{version}-install.exe'
     print(
         f'output location: {os.path.abspath(os.curdir)}/shopremote2_portable.exe')
-    os.rename('./shopremote2_portable.exe', f'./shopremote2-{version}-install.exe')
+    os.rename('./shopremote2_portable.exe', f'./{output_name}')
     print(
-        f'output location: {os.path.abspath(os.curdir)}/shopremote2-{version}-install.exe')
+        f'output location: {os.path.abspath(os.curdir)}/{output_name}')
 
 
 def main():
@@ -474,6 +492,7 @@ def main():
     version = get_version()
     features = ','.join(get_features(args))
     flutter = args.flutter
+    host_only = args.host_only
     if not flutter:
         system2('python3 res/inline-sciter.py')
     print(args.skip_cargo)
@@ -493,7 +512,7 @@ def main():
         os.chdir('../../..')
 
         if flutter:
-            build_flutter_windows(version, features, args.skip_portable_pack)
+            build_flutter_windows(version, features, args.skip_portable_pack, host_only)
             return
         system2('cargo build --release --features ' + features)
         # system2('upx.exe target/release/shopremote2.exe')
@@ -517,7 +536,7 @@ def main():
         # pacman -S -needed base-devel
         system2("sed -i 's/pkgver=.*/pkgver=%s/g' res/PKGBUILD" % version)
         if flutter:
-            build_flutter_arch_manjaro(version, features)
+            build_flutter_arch_manjaro(version, features, host_only)
         else:
             system2('cargo build --release --features ' + features)
             system2('git checkout src/ui/common.tis')
@@ -550,12 +569,12 @@ def main():
     else:
         if flutter:
             if osx:
-                build_flutter_dmg(version, features)
+                build_flutter_dmg(version, features, host_only)
                 pass
             else:
                 # system2(
                 #     'mv target/release/bundle/deb/shopremote2*.deb ./flutter/shopremote2.deb')
-                build_flutter_deb(version, features)
+                build_flutter_deb(version, features, host_only)
         else:
             system2('cargo bundle --release --features ' + features)
             if osx:

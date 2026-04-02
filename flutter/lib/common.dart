@@ -78,6 +78,9 @@ bool _ignoreDevicePixelRatio = true;
 int windowsBuildNumber = 0;
 DesktopType? desktopType;
 
+/// Host-only mode flag: when true, UI hides remote control/client features
+bool isHostOnly = false;
+
 // Tolerance used for floating-point position comparisons to avoid precision errors.
 const double _kPositionEpsilon = 1e-6;
 
